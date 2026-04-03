@@ -1,0 +1,58 @@
+name: Build & Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: |
+          pip install -r requirements.txt
+          pip install pyinstaller
+          pyinstaller visualizer.spec
+      - run: Compress-Archive -Path dist/Visualizer -DestinationPath AIBench-AIO-Windows.zip
+        shell: pwsh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-build
+          path: AIBench-AIO-Windows.zip
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: |
+          pip install -r requirements.txt
+          pip install pyinstaller
+          pyinstaller visualizer_mac.spec
+      - run: cd dist && zip -r ../AIBench-AIO-macOS.zip Visualizer.app
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-build
+          path: AIBench-AIO-macOS.zip
+
+  release:
+    needs: [build-windows, build-macos]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/windows-build/AIBench-AIO-Windows.zip
+            artifacts/macos-build/AIBench-AIO-macOS.zip
+          generate_release_notes: true
