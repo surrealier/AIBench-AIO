@@ -21,6 +21,10 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pyinstaller
+      - name: Create required directories
+        run: |
+          mkdir -p Videos Models snapshots recordings ep_packages
+        shell: bash
       - name: Build with PyInstaller
         run: pyinstaller visualizer.spec
       - name: Package
@@ -32,7 +36,7 @@ jobs:
           path: AIBench-AIO-Windows.zip
 
   build-macos:
-    runs-on: macos-13
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -43,6 +47,8 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pyinstaller
+      - name: Create required directories
+        run: mkdir -p Videos Models snapshots recordings
       - name: Build with PyInstaller
         run: pyinstaller visualizer_mac.spec
       - name: Package
