@@ -1,6 +1,7 @@
 """메인 윈도우: 레이아웃 조립 + 시그널 연결"""
 import csv
 import os
+import time
 from datetime import datetime
 
 import cv2
@@ -62,10 +63,19 @@ class MainWindow(QMainWindow):
         self._last_result: DetectionResult | None = None
         self._csv_rows: list = []
         self._csv_recording = False
+        self._last_render_time: float = 0.0
+        self._MIN_RENDER_INTERVAL = 1.0 / 35.0  # ~35fps cap for GUI rendering
 
         self._build_ui()
         self._connect_signals()
         self._status(t("ready"))
+
+        # 기본 모델 자동 로드 (#11)
+        if self._config.default_model_path and os.path.isfile(self._config.default_model_path):
+            try:
+                self._on_model_selected(self._config.default_model_path)
+            except Exception:
+                pass
 
     # ------------------------------------------------------------------ #
     # UI 구성
@@ -115,7 +125,7 @@ class MainWindow(QMainWindow):
         left_layout.setSpacing(4)
 
         self._file_browser = FileBrowserWidget(
-            self._config.videos_dir, self._config.models_dir
+            self._config, self._config.videos_dir, self._config.models_dir
         )
         self._class_filter = ClassFilterWidget(self._config)
         left_layout.addWidget(self._file_browser, stretch=1)
@@ -209,6 +219,8 @@ class MainWindow(QMainWindow):
     def _connect_signals(self):
         self._file_browser.video_selected.connect(self._on_video_selected)
         self._file_browser.model_selected.connect(self._on_model_selected)
+        self._file_browser.model_type_changed.connect(self._on_settings_changed)
+        self._file_browser.conf_changed.connect(self._on_conf_changed_rerun)
         self._video_widget.file_dropped.connect(self._file_browser.add_external_file)
 
         self._control_bar.play_clicked.connect(self._on_play)
@@ -224,7 +236,9 @@ class MainWindow(QMainWindow):
         self._control_bar.step_backward.connect(self._on_step_backward)
 
         self._settings_tab.settings_changed.connect(self._on_settings_changed)
+        self._settings_tab.custom_type_added.connect(self._file_browser.refresh_model_types)
         self._class_filter.filter_changed.connect(self._on_settings_changed)
+        self._tabs.currentChanged.connect(self._on_tab_changed)
 
     # ------------------------------------------------------------------ #
     # 키보드 단축키
@@ -248,15 +262,15 @@ class MainWindow(QMainWindow):
         elif key == Qt.Key_R:
             self._control_bar._btn_record.click()
         elif key in (Qt.Key_Plus, Qt.Key_Equal):
-            speeds = [0.25, 0.5, 1.0, 1.5, 2.0, 4.0]
-            cur = self._thread._speed if self._thread else 1.0
-            nxt = next((s for s in speeds if s > cur + 0.01), speeds[-1])
-            self._control_bar._speed_combo.setCurrentText(f"{nxt}x")
+            speeds = [1, 2, 3, 4, 8]
+            cur = int(self._thread._speed) if self._thread else 1
+            nxt = next((s for s in speeds if s > cur), speeds[-1])
+            self._control_bar._speed_combo.setCurrentText(f"x{nxt}")
         elif key == Qt.Key_Minus:
-            speeds = [0.25, 0.5, 1.0, 1.5, 2.0, 4.0]
-            cur = self._thread._speed if self._thread else 1.0
-            prev = next((s for s in reversed(speeds) if s < cur - 0.01), speeds[0])
-            self._control_bar._speed_combo.setCurrentText(f"{prev}x")
+            speeds = [1, 2, 3, 4, 8]
+            cur = int(self._thread._speed) if self._thread else 1
+            prev = next((s for s in reversed(speeds) if s < cur), speeds[0])
+            self._control_bar._speed_combo.setCurrentText(f"x{prev}")
         else:
             super().keyPressEvent(event)
 
@@ -265,8 +279,18 @@ class MainWindow(QMainWindow):
     # ------------------------------------------------------------------ #
     def _on_model_selected(self, path: str):
         try:
-            info = load_model(path, model_type=self._config.model_type,
+            model_type = self._config.model_type
+            custom_name = ""
+            if model_type.startswith("custom:"):
+                custom_name = model_type.split(":", 1)[1]
+                model_type = "custom"
+            info = load_model(path, model_type=model_type,
                               pt_convert_callback=self._pt_convert_dialog)
+            if custom_name:
+                info.custom_type_name = custom_name
+                cmt = self._config.custom_model_types.get(custom_name)
+                if cmt and cmt.class_names:
+                    info.names = cmt.class_names
             self._model_info = info
             self._config.init_class_styles(info.names)
             self._class_filter.populate(info.names)
@@ -274,6 +298,9 @@ class MainWindow(QMainWindow):
             self._stats_widget.set_model_info(info)
             self._analysis_tab.set_model_info(info)
             self._status(f"모델 로드: {os.path.basename(path)}  |  클래스: {len(info.names)}개")
+            # 이미지가 이미 로드되어 있으면 자동 추론
+            if self._video_path and os.path.splitext(self._video_path)[1].lower() in {".jpg", ".jpeg", ".png", ".bmp"}:
+                self._infer_single_image()
         except Exception as e:
             QMessageBox.critical(self, "모델 로드 실패", str(e))
 
@@ -282,6 +309,23 @@ class MainWindow(QMainWindow):
         self._video_path = path
         self._stats_widget.set_video_info(path)
         self._status(f"비디오: {os.path.basename(path)}")
+        # 첫 번째 프레임 표시
+        cap = cv2.VideoCapture(path)
+        if cap.isOpened():
+            ret, frame = cap.read()
+            if ret:
+                from core.inference import DetectionResult
+                self._last_frame = frame
+                self._last_result = DetectionResult.empty()
+                self._video_widget._set_pixmap_from_bgr(frame)
+                total = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+                self._control_bar.set_total_frames(total)
+                self._control_bar.update_position(0, total)
+            cap.release()
+        # 이미지 파일이면 자동 추론
+        ext = os.path.splitext(path)[1].lower()
+        if ext in {".jpg", ".jpeg", ".png", ".bmp"} and self._model_info:
+            self._infer_single_image()
 
     def _pt_convert_dialog(self, pt_path: str, names: dict):
         """PT 파일 → ONNX 변환 여부 묻기"""
@@ -392,8 +436,29 @@ class MainWindow(QMainWindow):
         self._last_result = result
         names = self._model_info.names if self._model_info else {}
 
+        # CSV 기록은 항상 수행
+        if isinstance(result, DetectionResult):
+            if self._csv_recording and self._model_info:
+                cur = getattr(self._thread, "_current_frame", 0) if self._thread else 0
+                for box, score, cid in zip(result.boxes, result.scores, result.class_ids):
+                    cid = int(cid)
+                    x1, y1, x2, y2 = int(box[0]), int(box[1]), int(box[2]), int(box[3])
+                    self._csv_rows.append([cur, cid, names.get(cid, str(cid)),
+                                            x1, y1, x2, y2, f"{float(score):.4f}"])
+
+            if self._recorder and self._recorder.isOpened():
+                drawn = self._video_widget._draw_detections(frame.copy(), result, self._config, names)
+                self._recorder.write(drawn)
+
+        # 뷰어 탭이 아니거나 프레임이 너무 빠르면 렌더링 스킵
+        now = time.perf_counter()
+        if self._tabs.currentIndex() != 0:
+            return
+        if (now - self._last_render_time) < self._MIN_RENDER_INTERVAL:
+            return
+        self._last_render_time = now
+
         if isinstance(result, ClassificationResult):
-            # Classification: 텍스트 오버레이만
             vis = frame.copy()
             top_k = result.top_k[:5]
             y = 30
@@ -415,19 +480,6 @@ class MainWindow(QMainWindow):
                 self._det_label.setText(f"탐지: {len(result.boxes)}개  ({detail})")
             else:
                 self._det_label.setText("탐지: 0개")
-
-        if isinstance(result, DetectionResult):
-            if self._recorder and self._recorder.isOpened():
-                drawn = self._video_widget._draw_detections(frame.copy(), result, self._config, names)
-                self._recorder.write(drawn)
-
-            if self._csv_recording and self._model_info:
-                cur = getattr(self._thread, "_current_frame", 0) if self._thread else 0
-                for box, score, cid in zip(result.boxes, result.scores, result.class_ids):
-                    cid = int(cid)
-                    x1, y1, x2, y2 = int(box[0]), int(box[1]), int(box[2]), int(box[3])
-                    self._csv_rows.append([cur, cid, names.get(cid, str(cid)),
-                                            x1, y1, x2, y2, f"{float(score):.4f}"])
 
     def _on_fps_updated(self, video_fps: float, infer_fps: float, infer_ms: float):
         self._control_bar.update_fps(video_fps, infer_fps, infer_ms)
@@ -546,6 +598,42 @@ class MainWindow(QMainWindow):
                 self._last_frame, self._last_result,
                 self._config, self._model_info.names
             )
+
+    def _on_tab_changed(self, index: int):
+        """뷰어 탭으로 돌아오면 마지막 프레임 다시 렌더링"""
+        if index == 0 and self._last_frame is not None and self._last_result is not None and self._model_info:
+            self._video_widget.display_frame(
+                self._last_frame, self._last_result,
+                self._config, self._model_info.names
+            )
+
+    def _infer_single_image(self):
+        """이미지 파일에 대해 현재 conf_threshold로 추론 실행"""
+        if self._last_frame is None or self._model_info is None:
+            return
+        from core.inference import run_inference, run_classification
+        names = self._model_info.names or {}
+        if self._model_info.task_type == "classification":
+            result = run_classification(self._model_info, self._last_frame)
+            self._on_frame_ready(self._last_frame, result)
+        else:
+            result = run_inference(self._model_info, self._last_frame,
+                                   self._config.conf_threshold)
+            self._last_result = result
+            self._video_widget.display_frame(
+                self._last_frame, result, self._config, names)
+            if len(result.boxes) > 0:
+                from collections import Counter
+                counts = Counter(int(c) for c in result.class_ids)
+                parts = [f"{names.get(cid, str(cid))}:{cnt}" for cid, cnt in counts.most_common(5)]
+                self._det_label.setText(f"탐지: {len(result.boxes)}개  ({' | '.join(parts)})")
+            else:
+                self._det_label.setText("탐지: 0개")
+
+    def _on_conf_changed_rerun(self, conf: float):
+        """conf threshold 변경 시 이미지면 재추론"""
+        if self._video_path and os.path.splitext(self._video_path)[1].lower() in {".jpg", ".jpeg", ".png", ".bmp"}:
+            self._infer_single_image()
 
     def _status(self, msg: str):
         self._statusbar.showMessage(msg)

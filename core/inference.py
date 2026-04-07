@@ -215,6 +215,185 @@ def postprocess_darknet(output: np.ndarray, conf: float,
     )
 
 
+
+def postprocess_detr(outputs: list, conf: float,
+                     ratio: float, pad: tuple, orig_shape: tuple) -> DetectionResult:
+    """DETR/RT-DETR/RF-DETR 출력 처리.
+    지원 형태:
+      - 단일 텐서 (1, N, 4+C): boxes + class scores
+      - 두 텐서 (1, N, 4) + (1, N, C): boxes, scores 분리
+    좌표: cxcywh 정규화(0~1) 또는 xyxy 절대좌표 자동 감지.
+    """
+    if len(outputs) >= 2 and outputs[0].shape[-1] == 4:
+        boxes_raw = outputs[0][0]  # (N, 4)
+        scores_raw = outputs[1][0]  # (N, C)
+    else:
+        data = outputs[0][0]  # (N, 4+C)
+        boxes_raw = data[:, :4]
+        scores_raw = data[:, 4:]
+
+    max_scores = scores_raw.max(axis=1)
+    class_ids = scores_raw.argmax(axis=1).astype(np.int32)
+    mask = max_scores > conf
+    if not mask.any():
+        return DetectionResult.empty()
+
+    boxes_raw = boxes_raw[mask]
+    scores = max_scores[mask].astype(np.float32)
+    class_ids = class_ids[mask]
+
+    oh, ow = orig_shape[:2]
+    # 좌표 형식 자동 감지: 값이 0~1 범위면 정규화된 cxcywh, 아니면 xyxy 절대좌표
+    if boxes_raw.max() <= 1.5:
+        cx, cy, bw, bh = boxes_raw[:, 0], boxes_raw[:, 1], boxes_raw[:, 2], boxes_raw[:, 3]
+        x1 = np.clip((cx - bw / 2) * ow, 0, ow)
+        y1 = np.clip((cy - bh / 2) * oh, 0, oh)
+        x2 = np.clip((cx + bw / 2) * ow, 0, ow)
+        y2 = np.clip((cy + bh / 2) * oh, 0, oh)
+    else:
+        # letterbox 좌표 → 원본 좌표
+        pad_w, pad_h = pad
+        x1 = np.clip((boxes_raw[:, 0] - pad_w) / ratio, 0, ow)
+        y1 = np.clip((boxes_raw[:, 1] - pad_h) / ratio, 0, oh)
+        x2 = np.clip((boxes_raw[:, 2] - pad_w) / ratio, 0, ow)
+        y2 = np.clip((boxes_raw[:, 3] - pad_h) / ratio, 0, oh)
+
+    boxes_xyxy = np.stack([x1, y1, x2, y2], axis=1).astype(np.float32)
+    return DetectionResult(boxes=boxes_xyxy, scores=scores, class_ids=class_ids, infer_ms=0.0)
+
+
+def postprocess_yolo_nas(outputs: list, conf: float,
+                         ratio: float, pad: tuple, orig_shape: tuple) -> DetectionResult:
+    """YOLO-NAS 출력: 두 텐서 (1, N, 4) + (1, N, C) 또는 단일 (1, N, 4+C)."""
+    return postprocess_detr(outputs, conf, ratio, pad, orig_shape)
+
+
+def postprocess_custom(outputs: list, cmt, conf: float,
+                       ratio: float, pad: tuple, orig_shape: tuple) -> DetectionResult:
+    """사용자 정의 모델 타입에 따른 후처리."""
+    oi = cmt.output_index if cmt.output_index < len(outputs) else 0
+    data = outputs[oi][0]  # 배치 첫 번째
+
+    attr_roles = cmt.attr_roles or []
+    if not attr_roles:
+        return DetectionResult.empty()
+
+    # dim_roles로 전치 여부 결정: attrs 차원이 마지막이 아니면 전치
+    if len(data.shape) == 2:
+        n_items, n_attrs = data.shape
+        if n_attrs == len(attr_roles):
+            pass  # (N, attrs) 정상
+        elif n_items == len(attr_roles):
+            data = data.T  # (attrs, N) → (N, attrs)
+
+    # attr_roles에서 좌표/confidence 인덱스 추출
+    coord_keys = {"x1", "y1", "x2", "y2", "x_center", "y_center", "width", "height"}
+    coord_idx = {}
+    conf_indices = []
+    single_conf_idx = -1
+    class_id_idx = -1
+    for i, role in enumerate(attr_roles):
+        if role in coord_keys:
+            coord_idx[role] = i
+        elif role.startswith("conf_class"):
+            conf_indices.append(i)
+        elif role == "objectness":
+            coord_idx["objectness"] = i
+        elif role == "confidence":
+            single_conf_idx = i
+        elif role == "class_id":
+            class_id_idx = i
+
+    # confidence + class_id 직접 지정 방식 (CenterNet 등)
+    if single_conf_idx >= 0 and class_id_idx >= 0:
+        raw_scores = data[:, single_conf_idx]
+        if "objectness" in coord_idx:
+            raw_scores = raw_scores * data[:, coord_idx["objectness"]]
+        mask = raw_scores > conf
+        if not mask.any():
+            return DetectionResult.empty()
+        data = data[mask]
+        scores = raw_scores[mask].astype(np.float32)
+        class_ids = data[:, class_id_idx].astype(np.int32)
+    elif conf_indices:
+        class_scores = data[:, conf_indices]
+        if "objectness" in coord_idx:
+            class_scores = class_scores * data[:, coord_idx["objectness"]:coord_idx["objectness"]+1]
+        max_scores = class_scores.max(axis=1)
+        class_ids = class_scores.argmax(axis=1).astype(np.int32)
+        mask = max_scores > conf
+        if not mask.any():
+            return DetectionResult.empty()
+        data = data[mask]
+        scores = max_scores[mask].astype(np.float32)
+        class_ids = class_ids[mask]
+    else:
+        return DetectionResult.empty()
+
+    oh, ow = orig_shape[:2]
+    pad_w, pad_h = pad
+
+    if "x1" in coord_idx and "y1" in coord_idx and "x2" in coord_idx and "y2" in coord_idx:
+        raw_x1 = data[:, coord_idx["x1"]]
+        raw_y1 = data[:, coord_idx["y1"]]
+        raw_x2 = data[:, coord_idx["x2"]]
+        raw_y2 = data[:, coord_idx["y2"]]
+        if raw_x1.max() <= 1.5:
+            x1 = np.clip(raw_x1 * ow, 0, ow)
+            y1 = np.clip(raw_y1 * oh, 0, oh)
+            x2 = np.clip(raw_x2 * ow, 0, ow)
+            y2 = np.clip(raw_y2 * oh, 0, oh)
+        else:
+            x1 = np.clip((raw_x1 - pad_w) / ratio, 0, ow)
+            y1 = np.clip((raw_y1 - pad_h) / ratio, 0, oh)
+            x2 = np.clip((raw_x2 - pad_w) / ratio, 0, ow)
+            y2 = np.clip((raw_y2 - pad_h) / ratio, 0, oh)
+    elif "x1" in coord_idx and "y1" in coord_idx and "width" in coord_idx and "height" in coord_idx:
+        # x1/y1/w/h → xyxy 변환
+        raw_x1 = data[:, coord_idx["x1"]]
+        raw_y1 = data[:, coord_idx["y1"]]
+        raw_w = data[:, coord_idx["width"]]
+        raw_h = data[:, coord_idx["height"]]
+        if raw_x1.max() <= 1.5:
+            x1 = np.clip(raw_x1 * ow, 0, ow)
+            y1 = np.clip(raw_y1 * oh, 0, oh)
+            x2 = np.clip((raw_x1 + raw_w) * ow, 0, ow)
+            y2 = np.clip((raw_y1 + raw_h) * oh, 0, oh)
+        else:
+            x1 = np.clip((raw_x1 - pad_w) / ratio, 0, ow)
+            y1 = np.clip((raw_y1 - pad_h) / ratio, 0, oh)
+            x2 = np.clip((raw_x1 + raw_w - pad_w) / ratio, 0, ow)
+            y2 = np.clip((raw_y1 + raw_h - pad_h) / ratio, 0, oh)
+    elif "x_center" in coord_idx and "y_center" in coord_idx and "width" in coord_idx and "height" in coord_idx:
+        cx = data[:, coord_idx["x_center"]]
+        cy = data[:, coord_idx["y_center"]]
+        bw = data[:, coord_idx["width"]]
+        bh = data[:, coord_idx["height"]]
+        if cx.max() <= 1.5:
+            x1 = np.clip((cx - bw / 2) * ow, 0, ow)
+            y1 = np.clip((cy - bh / 2) * oh, 0, oh)
+            x2 = np.clip((cx + bw / 2) * ow, 0, ow)
+            y2 = np.clip((cy + bh / 2) * oh, 0, oh)
+        else:
+            x1 = np.clip((cx - bw / 2 - pad_w) / ratio, 0, ow)
+            y1 = np.clip((cy - bh / 2 - pad_h) / ratio, 0, oh)
+            x2 = np.clip((cx + bw / 2 - pad_w) / ratio, 0, ow)
+            y2 = np.clip((cy + bh / 2 - pad_h) / ratio, 0, oh)
+    else:
+        return DetectionResult.empty()
+
+    boxes_xyxy = np.stack([x1, y1, x2, y2], axis=1).astype(np.float32)
+
+    if cmt.nms:
+        keep = _nms(boxes_xyxy, scores, class_ids, _NMS_IOU)
+        if not keep:
+            return DetectionResult.empty()
+        boxes_xyxy = boxes_xyxy[keep]
+        scores = scores[keep]
+        class_ids = class_ids[keep]
+
+    return DetectionResult(boxes=boxes_xyxy, scores=scores, class_ids=class_ids, infer_ms=0.0)
+
 def convert_darknet_to_unified(
     result: DetectionResult,
     fall_thresh: float = 0.5,
@@ -289,6 +468,35 @@ def run_inference(model_info: ModelInfo, frame: np.ndarray,
         output = model_info.session.run(None, {model_info.input_name: tensor})
         infer_ms = (time.perf_counter() - t0) * 1000.0
         result = postprocess_darknet(output[0][:1], conf, orig_shape)
+    elif model_info.model_type == "custom":
+        _, ratio, pad = letterbox(frame, model_info.input_size)
+        tensor = preprocess(frame, model_info.input_size)
+        if bs > 1:
+            tensor = np.repeat(tensor, bs, axis=0)
+        output = model_info.session.run(None, {model_info.input_name: tensor})
+        infer_ms = (time.perf_counter() - t0) * 1000.0
+        from core.app_config import AppConfig
+        cmt = AppConfig().custom_model_types.get(model_info.custom_type_name)
+        if cmt:
+            result = postprocess_custom(output, cmt, conf, ratio, pad, orig_shape)
+        else:
+            result = DetectionResult.empty()
+    elif model_info.model_type == "detr":
+        _, ratio, pad = letterbox(frame, model_info.input_size)
+        tensor = preprocess(frame, model_info.input_size)
+        if bs > 1:
+            tensor = np.repeat(tensor, bs, axis=0)
+        output = model_info.session.run(None, {model_info.input_name: tensor})
+        infer_ms = (time.perf_counter() - t0) * 1000.0
+        result = postprocess_detr(output, conf, ratio, pad, orig_shape)
+    elif model_info.model_type == "yolo_nas":
+        _, ratio, pad = letterbox(frame, model_info.input_size)
+        tensor = preprocess(frame, model_info.input_size)
+        if bs > 1:
+            tensor = np.repeat(tensor, bs, axis=0)
+        output = model_info.session.run(None, {model_info.input_name: tensor})
+        infer_ms = (time.perf_counter() - t0) * 1000.0
+        result = postprocess_yolo_nas(output, conf, ratio, pad, orig_shape)
     else:
         _, ratio, pad = letterbox(frame, model_info.input_size)
         tensor = preprocess(frame, model_info.input_size)

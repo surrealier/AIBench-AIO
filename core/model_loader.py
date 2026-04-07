@@ -20,9 +20,24 @@ class ModelInfo:
     session: Optional[ort.InferenceSession]
     output_layout: Literal["v8", "v5"]   # v8: (1,4+N,8400) / v5: (1,25200,5+N)
     input_name: str = ""
-    model_type: str = "yolo"             # "yolo" | "darknet"
+    model_type: str = "yolo"             # "yolo" | "darknet" | "detr" | ...
     task_type: str = "detection"         # "detection" | "classification"
     batch_size: int = 1                  # 고정 배치 크기 (1=단일, 4=4배치 등)
+    custom_type_name: str = ""           # custom 모델 타입 이름 (model_type=="custom" 시)
+
+
+# 지원 모델 타입 목록 (최대 10종)
+MODEL_TYPES = {
+    "yolo":      "YOLO (v5/v7/v8/v9/v11/v12)",
+    "darknet":   "CenterNet (Darknet)",
+    "detr":      "DETR / RT-DETR / RF-DETR",
+    "yolo_nas":  "YOLO-NAS",
+    "yolov10":   "YOLOv10 (NMS-free)",
+    "damo_yolo": "DAMO-YOLO",
+    "gold_yolo": "Gold-YOLO",
+    "yolox":     "YOLOX",
+    "efficientdet": "EfficientDet",
+}
 
 
 def _build_providers() -> list:
@@ -76,7 +91,7 @@ def _get_names_from_pt(path: str) -> dict:
         if names:
             return names
     except Exception as e:
-        print(f"[ModelLoader] PT names 추출 실패: {e}")
+        print(f"[ModelLoader] Failed to extract PT names: {e}")
     return {}
 
 
@@ -90,8 +105,10 @@ def _detect_task_type(session: ort.InferenceSession) -> str:
     return "detection"
 
 
-def _detect_layout(session: ort.InferenceSession) -> Literal["v8", "v5"]:
+def _detect_layout(session: ort.InferenceSession, model_type: str = "yolo") -> Literal["v8", "v5"]:
     """출력 텐서 shape으로 YOLO 버전 자동 감지"""
+    if model_type in ("detr", "yolo_nas", "yolov10", "custom"):
+        return "v8"  # DETR 계열은 별도 postprocess 사용
     shape = session.get_outputs()[0].shape
     # shape: (1, dim1, dim2)
     if len(shape) == 3:
@@ -172,13 +189,13 @@ def _load_onnx(path: str, model_type: str = "yolo", session_options=None) -> Mod
         names = _DARKNET_DEFAULT_NAMES
     input_size = _get_input_size(session)
     task_type = _detect_task_type(session)
-    layout = _detect_layout(session) if task_type == "detection" else "v8"
+    layout = _detect_layout(session, model_type) if task_type == "detection" else "v8"
     input_name = session.get_inputs()[0].name
     # 배치 크기 감지
     batch_dim = session.get_inputs()[0].shape[0]
     batch_size = int(batch_dim) if isinstance(batch_dim, int) and batch_dim > 0 else 1
-    print(f"[ModelLoader] ONNX 로드 완료: {os.path.basename(path)}")
-    print(f"  입력 크기: {input_size}, 태스크: {task_type}, 레이아웃: {layout}, 타입: {model_type}, 배치: {batch_size}, 클래스 수: {len(names)}")
+    print(f"[ModelLoader] ONNX loaded: {os.path.basename(path)}")
+    print(f"  input={input_size}, task={task_type}, layout={layout}, type={model_type}, batch={batch_size}, classes={len(names)}")
     return ModelInfo(
         path=path,
         format="onnx",

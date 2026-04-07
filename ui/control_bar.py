@@ -99,14 +99,15 @@ class ControlBar(QWidget):
         self._btn_record.setCheckable(True)
         self._btn_record.clicked.connect(self._on_record_toggled)
 
-        # 속도
-        speed_label = QLabel("속도:")
+        # 프레임 스킵
+        speed_label = QLabel("프레임 스킵:")
         self._speed_combo = QComboBox()
-        for s in ["0.25x", "0.5x", "1.0x", "1.5x", "2.0x", "4.0x"]:
+        for s in ["x1", "x2", "x3", "x4", "x8"]:
             self._speed_combo.addItem(s)
-        self._speed_combo.setCurrentText("1.0x")
+        self._speed_combo.setCurrentText("x1")
         self._speed_combo.currentTextChanged.connect(self._on_speed_changed)
-        self._speed_combo.setFixedWidth(70)
+        self._speed_combo.setFixedWidth(80)
+        self._speed_combo.setSizeAdjustPolicy(QComboBox.AdjustToMinimumContentsLengthWithIcon)
 
         # FPS 정보
         self._fps_label = QLabel("FPS: --")
@@ -191,7 +192,7 @@ class ControlBar(QWidget):
 
     def _on_speed_changed(self, text: str):
         try:
-            speed = float(text.replace("x", ""))
-            self.speed_changed.emit(speed)
+            speed = int(text.replace("x", ""))
+            self.speed_changed.emit(float(speed))
         except ValueError:
             pass

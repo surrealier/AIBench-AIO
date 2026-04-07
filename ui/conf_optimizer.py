@@ -10,8 +10,21 @@ from PySide6.QtWidgets import (
     QMessageBox, QTableWidget, QTableWidgetItem, QHeaderView,
 )
 
-from core.model_loader import load_model
+from core.model_loader import load_model, MODEL_TYPES
 from core.inference import run_inference, convert_darknet_to_unified
+
+
+def _populate_model_type_combo(combo):
+    combo.clear()
+    for key, label in MODEL_TYPES.items():
+        combo.addItem(label, key)
+    from core.app_config import AppConfig
+    for name in AppConfig().custom_model_types:
+        combo.addItem(name, f"custom:{name}")
+
+
+def _get_model_type(combo):
+    return combo.currentData() or "yolo"
 
 
 def _compute_iou(b1, b2):
@@ -74,8 +87,6 @@ class _ConfOptWorker(QThread):
 
                 # 추론 (매우 낮은 conf)
                 res = run_inference(mi, frame, 0.01)
-                if self.model_type == "darknet":
-                    res = convert_darknet_to_unified(res)
                 for box, score, cid in zip(res.boxes, res.scores, res.class_ids):
                     all_preds.append((float(score), int(cid), i, tuple(box)))
 
@@ -144,7 +155,7 @@ class ConfOptimizer(QWidget):
         btn_m.clicked.connect(self._browse_model)
         row1.addWidget(btn_m)
         self._combo_type = QComboBox()
-        self._combo_type.addItems(["YOLO", "CenterNet"])
+        _populate_model_type_combo(self._combo_type)
         row1.addWidget(self._combo_type)
         g.addLayout(row1)
 
@@ -197,7 +208,7 @@ class ConfOptimizer(QWidget):
         if not self._le_model.text() or not os.path.isdir(self._le_img.text()) or not os.path.isdir(self._le_gt.text()):
             QMessageBox.warning(self, "알림", "모델, 이미지, GT 폴더를 모두 지정하세요.")
             return
-        mtype = "yolo" if self._combo_type.currentIndex() == 0 else "darknet"
+        mtype = _get_model_type(self._combo_type)
         self._btn_run.setEnabled(False)
         self._prog.setValue(0)
         self._worker = _ConfOptWorker(self._le_img.text(), self._le_gt.text(),

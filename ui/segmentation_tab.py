@@ -12,9 +12,22 @@ from PySide6.QtWidgets import (
     QScrollArea, QGridLayout, QDialog, QSplitter,
 )
 
-from core.model_loader import load_model
+from core.model_loader import load_model, MODEL_TYPES
 from core.inference import preprocess, letterbox
 from ui import theme
+
+
+def _populate_model_type_combo(combo):
+    combo.clear()
+    for key, label in MODEL_TYPES.items():
+        combo.addItem(label, key)
+    from core.app_config import AppConfig
+    for name in AppConfig().custom_model_types:
+        combo.addItem(name, f"custom:{name}")
+
+
+def _get_model_type(combo):
+    return combo.currentData() or "yolo"
 
 
 def _run_seg_inference(mi, frame):
@@ -161,6 +174,16 @@ class SegmentationTab(QWidget):
         grp = QGroupBox("Segmentation 평가 설정")
         g = QVBoxLayout(grp)
 
+        # 테스트 모델 다운로드
+        dl_row = QHBoxLayout()
+        dl_row.addWidget(QLabel("테스트 모델:"))
+        btn_dl = QPushButton("YOLOv8n-seg 다운로드")
+        btn_dl.setToolTip("https://github.com/ultralytics/assets/releases/download/v8.2.0/yolov8n-seg.onnx")
+        btn_dl.clicked.connect(lambda: __import__('webbrowser').open("https://github.com/ultralytics/assets/releases/download/v8.2.0/yolov8n-seg.onnx"))
+        dl_row.addWidget(btn_dl)
+        dl_row.addStretch()
+        g.addLayout(dl_row)
+
         row1 = QHBoxLayout()
         row1.addWidget(QLabel("모델:"))
         self._le_model = QLineEdit(); self._le_model.setReadOnly(True)
@@ -169,7 +192,7 @@ class SegmentationTab(QWidget):
         btn_m.clicked.connect(self._browse_model)
         row1.addWidget(btn_m)
         self._combo_type = QComboBox()
-        self._combo_type.addItems(["YOLO", "CenterNet"])
+        _populate_model_type_combo(self._combo_type)
         row1.addWidget(self._combo_type)
         g.addLayout(row1)
 
@@ -234,7 +257,7 @@ class SegmentationTab(QWidget):
     def _run(self):
         if not self._le_model.text() or not os.path.isdir(self._le_img.text()) or not os.path.isdir(self._le_gt.text()):
             QMessageBox.warning(self, "알림", "모델, 이미지, GT 마스크 폴더를 모두 지정하세요."); return
-        mtype = "yolo" if self._combo_type.currentIndex() == 0 else "darknet"
+        mtype = _get_model_type(self._combo_type)
         self._btn_run.setEnabled(False)
         self._prog.setValue(0)
         self._worker = _SegEvalWorker(self._le_model.text(), mtype,

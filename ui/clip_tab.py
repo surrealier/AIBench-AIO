@@ -68,6 +68,16 @@ class CLIPTab(QWidget):
         grp = QGroupBox("CLIP 모델 설정")
         g = QVBoxLayout(grp)
 
+        # 테스트 모델 다운로드
+        dl_row = QHBoxLayout()
+        dl_row.addWidget(QLabel("테스트 모델:"))
+        btn_dl = QPushButton("CLIP ViT-B/32 (HuggingFace)")
+        btn_dl.setToolTip("https://huggingface.co/openai/clip-vit-base-patch32")
+        btn_dl.clicked.connect(lambda: __import__('webbrowser').open("https://huggingface.co/openai/clip-vit-base-patch32"))
+        dl_row.addWidget(btn_dl)
+        dl_row.addStretch()
+        g.addLayout(dl_row)
+
         row1 = QHBoxLayout()
         row1.addWidget(QLabel("Image Encoder:"))
         self._le_img_enc = QLineEdit(); self._le_img_enc.setReadOnly(True)

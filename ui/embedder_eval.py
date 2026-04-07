@@ -12,7 +12,7 @@ from PySide6.QtWidgets import (
     QTableWidget, QTableWidgetItem, QHeaderView,
 )
 
-from core.model_loader import load_model
+from core.model_loader import load_model, MODEL_TYPES
 from core.inference import preprocess, preprocess_classification, letterbox
 from ui import theme
 
@@ -79,6 +79,16 @@ class EmbedderEvalTab(QWidget):
         grp = QGroupBox("Embedder 평가 설정")
         g = QVBoxLayout(grp)
 
+        # 테스트 모델 다운로드
+        dl_row = QHBoxLayout()
+        dl_row.addWidget(QLabel("테스트 모델:"))
+        btn_dl = QPushButton("ResNet50 ONNX 다운로드")
+        btn_dl.setToolTip("https://github.com/onnx/models/raw/main/validated/vision/classification/resnet/model/resnet50-v2-7.onnx")
+        btn_dl.clicked.connect(lambda: __import__('webbrowser').open("https://github.com/onnx/models/raw/main/validated/vision/classification/resnet/model/resnet50-v2-7.onnx"))
+        dl_row.addWidget(btn_dl)
+        dl_row.addStretch()
+        g.addLayout(dl_row)
+
         row1 = QHBoxLayout()
         row1.addWidget(QLabel("모델:"))
         self._le_model = QLineEdit(); self._le_model.setReadOnly(True)
@@ -87,7 +97,12 @@ class EmbedderEvalTab(QWidget):
         btn_m.clicked.connect(self._browse_model)
         row1.addWidget(btn_m)
         self._combo_type = QComboBox()
-        self._combo_type.addItems(["YOLO", "CenterNet"])
+        self._combo_type.clear()
+        for key, label in MODEL_TYPES.items():
+            self._combo_type.addItem(label, key)
+        from core.app_config import AppConfig
+        for name in AppConfig().custom_model_types:
+            self._combo_type.addItem(name, f"custom:{name}")
         row1.addWidget(self._combo_type)
         g.addLayout(row1)
 
@@ -161,7 +176,7 @@ class EmbedderEvalTab(QWidget):
     def _run(self):
         if not self._le_model.text() or not os.path.isdir(self._le_img.text()):
             QMessageBox.warning(self, "알림", "모델과 이미지 폴더를 지정하세요."); return
-        mtype = "yolo" if self._combo_type.currentIndex() == 0 else "darknet"
+        mtype = self._combo_type.currentData() or "yolo"
         self._btn_run.setEnabled(False)
         self._prog.setValue(0)
         self._worker = _EmbedWorker(self._le_model.text(), mtype,

@@ -90,6 +90,9 @@ class BenchmarkResult:
     min_ms: float
     max_ms: float
     std_ms: float
+    p50_ms: float            # 중앙값 (50번째 백분위수)
+    p95_ms: float            # 95번째 백분위수
+    p99_ms: float            # 99번째 백분위수
     fps: float               # 이미지/초 = batch_size × 1000 / mean_total_ms
     cpu_pct: float
     ram_mb: float
@@ -264,6 +267,9 @@ def run_benchmark_core(
             min_ms=float(np.min(total_arr)),
             max_ms=float(np.max(total_arr)),
             std_ms=float(np.std(total_arr)),
+            p50_ms=float(np.percentile(total_arr, 50)),
+            p95_ms=float(np.percentile(total_arr, 95)),
+            p99_ms=float(np.percentile(total_arr, 99)),
             fps=batch * 1000.0 / mean_total if mean_total > 0 else 0.0,
             cpu_pct=float(np.mean(cpu_samples)) if cpu_samples else 0.0,
             ram_mb=proc.memory_info().rss / 1024 / 1024,

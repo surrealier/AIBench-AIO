@@ -43,7 +43,7 @@ a:hover { color: var(--action-link-04); }
 .text-mono       { font-family: 'DM Mono', monospace; font-size: 14px; }
 
 /* ── Layout ─────────────────────────────────────────── */
-.app-shell { display: flex; height: 100vh; overflow: hidden; }
+.app-shell { display: flex; height: 100%; overflow: hidden; }
 
 .sidebar {
   width: 240px; min-width: 240px;

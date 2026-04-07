@@ -11,9 +11,22 @@ from PySide6.QtWidgets import (
     QMessageBox, QSpinBox, QCheckBox,
 )
 
-from core.model_loader import load_model
+from core.model_loader import load_model, MODEL_TYPES
 from core.inference import preprocess, preprocess_classification, letterbox
 from ui import theme
+
+
+def _populate_model_type_combo(combo):
+    combo.clear()
+    for key, label in MODEL_TYPES.items():
+        combo.addItem(label, key)
+    from core.app_config import AppConfig
+    for name in AppConfig().custom_model_types:
+        combo.addItem(name, f"custom:{name}")
+
+
+def _get_model_type(combo):
+    return combo.currentData() or "yolo"
 
 
 # ------------------------------------------------------------------ #
@@ -115,7 +128,7 @@ class EmbeddingViewer(QWidget):
         btn_m.clicked.connect(self._browse_model)
         row1.addWidget(btn_m)
         self._combo_type = QComboBox()
-        self._combo_type.addItems(["YOLO", "CenterNet"])
+        _populate_model_type_combo(self._combo_type)
         row1.addWidget(self._combo_type)
         g.addLayout(row1)
 
@@ -185,7 +198,7 @@ class EmbeddingViewer(QWidget):
             QMessageBox.warning(self, "알림", "모델과 이미지 폴더를 선택하세요.")
             return
 
-        mtype = "yolo" if self._combo_type.currentIndex() == 0 else "darknet"
+        mtype = _get_model_type(self._combo_type)
         label_modes = ["folder", "filename", "none"]
         label_mode = label_modes[self._combo_label.currentIndex()]
 

@@ -669,7 +669,12 @@ class EvaluationTab(QWidget):
         btn_model.clicked.connect(self._browse_model)
         row_model.addWidget(btn_model)
         self._combo_type = QComboBox()
-        self._combo_type.addItems(["YOLO", "CenterNet"])
+        from core.model_loader import MODEL_TYPES
+        from core.app_config import AppConfig as _AC
+        for key, label in MODEL_TYPES.items():
+            self._combo_type.addItem(label, key)
+        for name in _AC().custom_model_types:
+            self._combo_type.addItem(name, f"custom:{name}")
         row_model.addWidget(self._combo_type)
         g1.addLayout(row_model)
 
@@ -822,7 +827,7 @@ class EvaluationTab(QWidget):
         path, _ = QFileDialog.getOpenFileName(self, "모델 선택", "Models", "ONNX (*.onnx)")
         if path:
             self._le_model.setText(path)
-            model_type = "yolo" if self._combo_type.currentIndex() == 0 else "darknet"
+            model_type = self._combo_type.currentData() or "yolo"
             try:
                 self._model_info = load_model(path, model_type=model_type)
             except Exception as e:
@@ -868,7 +873,12 @@ class EvaluationTab(QWidget):
             self._eval_model_list.insertRow(row)
             self._eval_model_list.setItem(row, 0, QTableWidgetItem(p))
             combo = QComboBox()
-            combo.addItems(["YOLO", "CenterNet"])
+            from core.model_loader import MODEL_TYPES
+            from core.app_config import AppConfig as _AC
+            for key, label in MODEL_TYPES.items():
+                combo.addItem(label, key)
+            for name in _AC().custom_model_types:
+                combo.addItem(name, f"custom:{name}")
             self._eval_model_list.setCellWidget(row, 1, combo)
 
     def _remove_eval_model(self):
@@ -906,7 +916,7 @@ class EvaluationTab(QWidget):
         for i in range(n):
             path = self._eval_model_list.item(i, 0).text()
             combo = self._eval_model_list.cellWidget(i, 1)
-            mtype = "yolo" if combo.currentIndex() == 0 else "darknet"
+            mtype = combo.currentData() or "yolo"
             entries.append((path, mtype))
 
         self._current_task = self._combo_task.currentText()
@@ -988,32 +998,38 @@ class EvaluationTab(QWidget):
                       for cid in class_ids)
 
     def _on_eval_progress(self, name, cur, total):
-        self._eval_prog.setValue(int(cur / total * 100))
+        self._eval_prog.setMaximum(100)
+        pct = int(cur / max(total, 1) * 100)
+        self._eval_prog.setValue(pct)
+        self._eval_prog.setFormat(f"{name}: {cur}/{total} ({pct}%)")
 
     def _on_model_done(self, name, metrics):
         row = self._eval_row
         self._table.insertRow(row)
         is_cls = getattr(self, '_current_task', 'Detection') == 'Classification'
 
+        def _fmt(v):
+            """값을 00.0000% 형식으로 포맷"""
+            return f"{v * 100:.4f}%"
+
         if is_cls:
             self._table.setItem(row, 0, QTableWidgetItem(name))
-            self._table.setItem(row, 1, QTableWidgetItem(f"{metrics.get('accuracy', 0):.4f}"))
-            self._table.setItem(row, 2, QTableWidgetItem(f"{metrics['precision']:.4f}"))
-            self._table.setItem(row, 3, QTableWidgetItem(f"{metrics['recall']:.4f}"))
-            self._table.setItem(row, 4, QTableWidgetItem(f"{metrics['f1']:.4f}"))
+            self._table.setItem(row, 1, QTableWidgetItem(_fmt(metrics.get('accuracy', 0))))
+            self._table.setItem(row, 2, QTableWidgetItem(_fmt(metrics['precision'])))
+            self._table.setItem(row, 3, QTableWidgetItem(_fmt(metrics['recall'])))
+            self._table.setItem(row, 4, QTableWidgetItem(_fmt(metrics['f1'])))
             btn = QPushButton("상세보기")
             detail = metrics.get("detail", {})
             btn.clicked.connect(lambda _, n=name, d=detail: self._show_cls_detail(n, d))
             self._table.setCellWidget(row, 5, btn)
-            # 최고 Accuracy 하이라이트
             score_col = 1
         else:
             self._table.setItem(row, 0, QTableWidgetItem(name))
-            self._table.setItem(row, 1, QTableWidgetItem(f"{metrics['mAP50']:.4f}"))
-            self._table.setItem(row, 2, QTableWidgetItem(f"{metrics['mAP50_95']:.4f}"))
-            self._table.setItem(row, 3, QTableWidgetItem(f"{metrics['precision']:.4f}"))
-            self._table.setItem(row, 4, QTableWidgetItem(f"{metrics['recall']:.4f}"))
-            self._table.setItem(row, 5, QTableWidgetItem(f"{metrics['f1']:.4f}"))
+            self._table.setItem(row, 1, QTableWidgetItem(_fmt(metrics['mAP50'])))
+            self._table.setItem(row, 2, QTableWidgetItem(_fmt(metrics['mAP50_95'])))
+            self._table.setItem(row, 3, QTableWidgetItem(_fmt(metrics['precision'])))
+            self._table.setItem(row, 4, QTableWidgetItem(_fmt(metrics['recall'])))
+            self._table.setItem(row, 5, QTableWidgetItem(_fmt(metrics['f1'])))
             btn = QPushButton("상세보기")
             detail = metrics.get("detail", {})
             btn.clicked.connect(lambda _, n=name, d=detail: self._show_detail(n, d))
@@ -1021,11 +1037,16 @@ class EvaluationTab(QWidget):
             score_col = 1
 
         # 최고 점수 하이라이트
-        best_row, best_val = 0, 0
+        best_row, best_val = 0, -1.0
         for r in range(self._table.rowCount()):
-            v = float(self._table.item(r, score_col).text())
-            if v > best_val:
-                best_val, best_row = v, r
+            item = self._table.item(r, score_col)
+            if item:
+                try:
+                    v = float(item.text().replace('%', ''))
+                except ValueError:
+                    v = 0.0
+                if v > best_val:
+                    best_val, best_row = v, r
         from PySide6.QtGui import QColor
         ncols = self._table.columnCount() - 1
         for r in range(self._table.rowCount()):
@@ -1057,10 +1078,10 @@ class EvaluationTab(QWidget):
         for r, cid in enumerate(class_keys):
             v = detail[cid]
             tbl.setItem(r, 0, QTableWidgetItem(UNIFIED_NAMES.get(cid, str(cid))))
-            tbl.setItem(r, 1, QTableWidgetItem(f"{v['ap']:.4f}"))
-            tbl.setItem(r, 2, QTableWidgetItem(f"{v['precision']:.4f}"))
-            tbl.setItem(r, 3, QTableWidgetItem(f"{v['recall']:.4f}"))
-            tbl.setItem(r, 4, QTableWidgetItem(f"{v['f1']:.4f}"))
+            tbl.setItem(r, 1, QTableWidgetItem(f"{v['ap']*100:.4f}%"))
+            tbl.setItem(r, 2, QTableWidgetItem(f"{v['precision']*100:.4f}%"))
+            tbl.setItem(r, 3, QTableWidgetItem(f"{v['recall']*100:.4f}%"))
+            tbl.setItem(r, 4, QTableWidgetItem(f"{v['f1']*100:.4f}%"))
             tbl.setItem(r, 5, QTableWidgetItem(str(v['tp'])))
             tbl.setItem(r, 6, QTableWidgetItem(str(v['fp'])))
             tbl.setItem(r, 7, QTableWidgetItem(str(v['fn'])))
@@ -1082,9 +1103,9 @@ class EvaluationTab(QWidget):
         for r, cid in enumerate(class_keys):
             v = detail[cid]
             tbl.setItem(r, 0, QTableWidgetItem(str(cid)))
-            tbl.setItem(r, 1, QTableWidgetItem(f"{v['precision']:.4f}"))
-            tbl.setItem(r, 2, QTableWidgetItem(f"{v['recall']:.4f}"))
-            tbl.setItem(r, 3, QTableWidgetItem(f"{v['f1']:.4f}"))
+            tbl.setItem(r, 1, QTableWidgetItem(f"{v['precision']*100:.4f}%"))
+            tbl.setItem(r, 2, QTableWidgetItem(f"{v['recall']*100:.4f}%"))
+            tbl.setItem(r, 3, QTableWidgetItem(f"{v['f1']*100:.4f}%"))
             tbl.setItem(r, 4, QTableWidgetItem(str(v['tp'])))
             tbl.setItem(r, 5, QTableWidgetItem(str(v['fp'])))
         lay.addWidget(tbl)
@@ -1188,14 +1209,14 @@ def _generate_html_report(eval_results, is_cls=False):
         cols = ["모델", "Accuracy", "Precision", "Recall", "F1"]
         rows = []
         for name, m in eval_results:
-            rows.append([name, f"{m.get('accuracy',0):.4f}", f"{m['precision']:.4f}",
-                         f"{m['recall']:.4f}", f"{m['f1']:.4f}"])
+            rows.append([name, f"{m.get('accuracy',0)*100:.4f}%", f"{m['precision']*100:.4f}%",
+                         f"{m['recall']*100:.4f}%", f"{m['f1']*100:.4f}%"])
     else:
         cols = ["모델", "mAP@50", "mAP@50:95", "Precision", "Recall", "F1"]
         rows = []
         for name, m in eval_results:
-            rows.append([name, f"{m['mAP50']:.4f}", f"{m['mAP50_95']:.4f}",
-                         f"{m['precision']:.4f}", f"{m['recall']:.4f}", f"{m['f1']:.4f}"])
+            rows.append([name, f"{m['mAP50']*100:.4f}%", f"{m['mAP50_95']*100:.4f}%",
+                         f"{m['precision']*100:.4f}%", f"{m['recall']*100:.4f}%", f"{m['f1']*100:.4f}%"])
 
     # 차트 데이터
     model_names = [r[0] for r in rows]
@@ -1230,16 +1251,16 @@ def _generate_html_report(eval_results, is_cls=False):
             detail_sections += '<th>클래스</th><th>Precision</th><th>Recall</th><th>F1</th></tr>'
             for cid in class_keys:
                 v = detail[cid]
-                detail_sections += (f'<tr><td>{cid}</td><td>{v["precision"]:.4f}</td>'
-                                    f'<td>{v["recall"]:.4f}</td><td>{v["f1"]:.4f}</td></tr>')
+                detail_sections += (f'<tr><td>{cid}</td><td>{v["precision"]*100:.4f}%</td>'
+                                    f'<td>{v["recall"]*100:.4f}%</td><td>{v["f1"]*100:.4f}%</td></tr>')
         else:
             detail_sections += '<th>클래스</th><th>AP@50</th><th>Precision</th><th>Recall</th><th>F1</th><th>TP</th><th>FP</th><th>FN</th></tr>'
             for cid in class_keys:
                 v = detail[cid]
                 cname = str(cid)
-                detail_sections += (f'<tr><td>{cname}</td><td>{v["ap"]:.4f}</td>'
-                                    f'<td>{v["precision"]:.4f}</td><td>{v["recall"]:.4f}</td>'
-                                    f'<td>{v["f1"]:.4f}</td><td>{v["tp"]}</td>'
+                detail_sections += (f'<tr><td>{cname}</td><td>{v["ap"]*100:.4f}%</td>'
+                                    f'<td>{v["precision"]*100:.4f}%</td><td>{v["recall"]*100:.4f}%</td>'
+                                    f'<td>{v["f1"]*100:.4f}%</td><td>{v["tp"]}</td>'
                                     f'<td>{v["fp"]}</td><td>{v["fn"]}</td></tr>')
         detail_sections += '</table>'
 

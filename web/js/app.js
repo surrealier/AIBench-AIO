@@ -26,8 +26,8 @@ const App = {
 
     let html = `
       <div class="sidebar-header">
-        <img src="/assets/icon.svg" width="24" height="24" alt="Visualizer" style="border-radius:4px;">
-        <h1>Visualizer</h1>
+        <img src="/assets/icon.svg" width="24" height="24" alt="AIO" style="border-radius:4px;">
+        <h1>AIO</h1>
       </div>`;
 
     for (const [secKey, items] of this._nav) {
@@ -95,9 +95,18 @@ const App = {
     }
   },
 
+  _tabCache: {},
+
   switchTab(name) {
     const tab = Tabs[name];
     if (!tab) return;
+
+    // 현재 탭 DOM 캐시 저장
+    const body = document.getElementById('page-body');
+    if (this.currentTab && body.children.length) {
+      this._tabCache[this.currentTab] = body.innerHTML;
+    }
+
     this.currentTab = name;
 
     // Update nav active state
@@ -108,13 +117,19 @@ const App = {
     // Update header
     document.getElementById('page-title').textContent = tab.title ? I18n.t('nav.' + name) : name;
 
-    // Render content
-    const body = document.getElementById('page-body');
-    body.innerHTML = tab.render();
-    body.classList.add('animate-fade-in');
-    setTimeout(() => body.classList.remove('animate-fade-in'), 200);
-
-    if (tab.init) tab.init();
+    // 캐시된 HTML이 있으면 복원, 없으면 새로 렌더
+    if (tab._cachedHTML) {
+      body.innerHTML = tab._cachedHTML;
+      if (tab.init) tab.init();
+    } else if (this._tabCache[name]) {
+      body.innerHTML = this._tabCache[name];
+      if (tab.init) tab.init();
+    } else {
+      body.innerHTML = tab.render();
+      body.classList.add('animate-fade-in');
+      setTimeout(() => body.classList.remove('animate-fade-in'), 200);
+      if (tab.init) tab.init();
+    }
   },
 
   setStatus(text) {

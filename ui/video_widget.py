@@ -137,14 +137,20 @@ class VideoWidget(QWidget):
                 (tw, th), baseline = cv2.getTextSize(
                     label, cv2.FONT_HERSHEY_SIMPLEX, font_scale, font_thick)
                 ty = max(y1 - 4, th + 4)
-                cv2.rectangle(frame,
-                              (x1, ty - th - baseline - 2),
-                              (x1 + tw + 2, ty + 2),
-                              color, -1)
+                if config.show_label_bg:
+                    cv2.rectangle(frame,
+                                  (x1, ty - th - baseline - 2),
+                                  (x1 + tw + 2, ty + 2),
+                                  color, -1)
+                    # 자동 대비 텍스트 색상
+                    lum = color[0] * 0.114 + color[1] * 0.587 + color[2] * 0.299
+                    txt_color = (0, 0, 0) if lum > 128 else (255, 255, 255)
+                else:
+                    txt_color = color
                 cv2.putText(frame, label,
                             (x1 + 1, ty - baseline),
                             cv2.FONT_HERSHEY_SIMPLEX, font_scale,
-                            (255, 255, 255), font_thick, cv2.LINE_AA)
+                            txt_color, font_thick, cv2.LINE_AA)
         return frame
 
     def _set_pixmap_from_bgr(self, frame: np.ndarray):

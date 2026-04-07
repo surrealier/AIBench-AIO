@@ -20,6 +20,22 @@ class ClassStyle:
     thickness: Optional[int] = None                 # None → 전역 기본값
 
 
+@dataclass
+class CustomModelType:
+    """사용자 정의 모델 타입: output shape → 의미 매핑"""
+    name: str
+    output_index: int = 0                           # 사용할 출력 텐서 인덱스
+    dim_roles: Optional[list] = None                # 각 차원의 역할 리스트
+    # 예: ["batch", "detections", "attrs"]
+    attr_roles: Optional[list] = None               # attrs 차원 내 각 슬롯의 역할
+    # 예: ["x_center", "y_center", "width", "height", "conf_class0", ...]
+    coord_format: str = "xyxy"                      # "xyxy" | "xywh" | "cxcywh"
+    has_objectness: bool = False
+    nms: bool = True
+    conf_threshold: float = 0.25
+    class_names: Optional[dict] = None              # {0: "person", 1: "car", ...}
+
+
 class AppConfig:
     _instance = None
     _lock = threading.Lock()
@@ -46,10 +62,12 @@ class AppConfig:
             self.label_size: float = cfg.get("label_size", 0.55)
             self.show_labels: bool = cfg.get("show_labels", True)
             self.show_confidence: bool = cfg.get("show_confidence", True)
+            self.show_label_bg: bool = cfg.get("show_label_bg", True)
             self.videos_dir: str = cfg.get("videos_dir", _DEFAULT_VIDEOS)
             self.models_dir: str = cfg.get("models_dir", _DEFAULT_MODELS)
             self.model_type: str = cfg.get("model_type", "yolo")
             self.batch_size: int = cfg.get("batch_size", 1)
+            self.default_model_path: str = cfg.get("default_model_path", "")
 
             raw = cfg.get("class_styles", {})
             self.class_styles: dict[int, ClassStyle] = {}
@@ -61,6 +79,23 @@ class AppConfig:
                     thickness=v.get("thickness"),
                 )
 
+            # 사용자 정의 모델 타입
+            self.custom_model_types: dict[str, CustomModelType] = {}
+            for name, d in cfg.get("custom_model_types", {}).items():
+                raw_cn = d.get("class_names")
+                cn = {int(k): v for k, v in raw_cn.items()} if raw_cn else None
+                self.custom_model_types[name] = CustomModelType(
+                    name=name,
+                    output_index=d.get("output_index", 0),
+                    dim_roles=d.get("dim_roles"),
+                    attr_roles=d.get("attr_roles"),
+                    coord_format=d.get("coord_format", "xyxy"),
+                    has_objectness=d.get("has_objectness", False),
+                    nms=d.get("nms", True),
+                    conf_threshold=d.get("conf_threshold", 0.25),
+                    class_names=cn,
+                )
+
     def save(self):
         with self._rw_lock:
             cs_save = {}
@@ -70,17 +105,34 @@ class AppConfig:
                     "color": list(s.color) if s.color else None,
                     "thickness": s.thickness,
                 }
+            cmt_save = {}
+            for name, cmt in self.custom_model_types.items():
+                d = {
+                    "output_index": cmt.output_index,
+                    "dim_roles": cmt.dim_roles,
+                    "attr_roles": cmt.attr_roles,
+                    "coord_format": cmt.coord_format,
+                    "has_objectness": cmt.has_objectness,
+                    "nms": cmt.nms,
+                    "conf_threshold": cmt.conf_threshold,
+                }
+                if cmt.class_names:
+                    d["class_names"] = cmt.class_names
+                cmt_save[name] = d
             cfg = {
                 "conf_threshold": self.conf_threshold,
                 "box_thickness": self.box_thickness,
                 "label_size": self.label_size,
                 "show_labels": self.show_labels,
                 "show_confidence": self.show_confidence,
+                "show_label_bg": self.show_label_bg,
                 "videos_dir": self.videos_dir,
                 "models_dir": self.models_dir,
                 "model_type": self.model_type,
                 "batch_size": self.batch_size,
+                "default_model_path": self.default_model_path,
                 "class_styles": cs_save,
+                "custom_model_types": cmt_save,
             }
         os.makedirs(os.path.dirname(_CONFIG_PATH), exist_ok=True)
         with open(_CONFIG_PATH, "w", encoding="utf-8") as f:

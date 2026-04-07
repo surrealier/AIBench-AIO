@@ -23,8 +23,22 @@ _RESULT_COLS = [
     "워밍업", "반복수",
     "전처리 ms", "추론 ms", "후처리 ms", "총 ms",
     "최소 ms", "최대 ms", "표준편차",
+    "P50 ms", "P95 ms", "P99 ms",
     "FPS (img/s)", "CPU %", "RAM MB", "GPU %", "VRAM MB",
 ]
+
+_COL_TOOLTIPS = {
+    "P50 ms": "P50 (중앙값): 전체 측정값의 50%가 이 값 이하. 일반적인 응답 시간을 나타냅니다.",
+    "P95 ms": "P95: 전체 측정값의 95%가 이 값 이하. 대부분의 요청이 이 시간 내에 완료됩니다.",
+    "P99 ms": "P99: 전체 측정값의 99%가 이 값 이하. 최악에 가까운 응답 시간을 나타냅니다.",
+    "CPU %": "벤치마크 실행 중 프로세스의 평균 CPU 사용률",
+    "RAM MB": "벤치마크 실행 중 프로세스의 RSS 메모리 사용량 (MB)",
+    "GPU %": "벤치마크 실행 중 GPU 코어 사용률 (nvidia-smi)",
+    "VRAM MB": "벤치마크 실행 중 GPU 메모리 사용량 / 전체 (nvidia-smi)",
+    "전처리 ms": "이미지 리사이즈, 정규화, 배치 구성에 소요되는 시간",
+    "추론 ms": "ONNX Runtime session.run() 호출에 소요되는 시간",
+    "후처리 ms": "디코딩, NMS 등 결과 변환에 소요되는 시간",
+}
 
 
 def _parse_src_hw(text: str) -> "tuple[int, int]":
@@ -65,8 +79,13 @@ class ModelSlotWidget(QGroupBox):
         btn_sel.clicked.connect(self._select)
 
         self._type_combo = QComboBox()
-        self._type_combo.addItems(["YOLO", "CenterNet"])
-        self._type_combo.setFixedWidth(86)
+        from core.model_loader import MODEL_TYPES
+        from core.app_config import AppConfig as _AC
+        for key, label in MODEL_TYPES.items():
+            self._type_combo.addItem(label, key)
+        for name in _AC().custom_model_types:
+            self._type_combo.addItem(name, f"custom:{name}")
+        self._type_combo.setFixedWidth(200)
         self._type_combo.setToolTip("모델 아키텍처 타입")
 
         btn_rm = QPushButton("X")
@@ -154,7 +173,7 @@ class ModelSlotWidget(QGroupBox):
     def get_config(self, iterations: int) -> "BenchmarkConfig | None":
         if not self._path:
             return None
-        model_type = "yolo" if self._type_combo.currentIndex() == 0 else "darknet"
+        model_type = self._type_combo.currentData() or "yolo"
         src_hw = _parse_src_hw(self._src_hw_edit.text())
         ep_key = self._ep_combo.currentData()
         return BenchmarkConfig(
@@ -381,6 +400,9 @@ class BenchmarkTab(QWidget):
             f"{result.min_ms:.2f}",
             f"{result.max_ms:.2f}",
             f"{result.std_ms:.2f}",
+            f"{result.p50_ms:.2f}",
+            f"{result.p95_ms:.2f}",
+            f"{result.p99_ms:.2f}",
             f"{result.fps:.1f}",
             f"{result.cpu_pct:.1f}",
             f"{result.ram_mb:.0f}",
@@ -390,6 +412,10 @@ class BenchmarkTab(QWidget):
         for col, val in enumerate(values):
             item = QTableWidgetItem(val)
             item.setTextAlignment(Qt.AlignCenter)
+            # 컬럼 툴팁 설정
+            col_name = _RESULT_COLS[col] if col < len(_RESULT_COLS) else ""
+            if col_name in _COL_TOOLTIPS:
+                item.setToolTip(_COL_TOOLTIPS[col_name])
             self._table.setItem(row, col, item)
         self._table.scrollToBottom()
 
@@ -493,6 +519,63 @@ class BenchmarkTab(QWidget):
                 ws.column_dimensions[col_cells[0].column_letter].width = min(  # type: ignore[union-attr]
                     max_len + 3, 32
                 )
+
+            # ── 시스템 정보 시트 추가 ──
+            ws_sys = wb.create_sheet("시스템 정보")
+            import platform, subprocess, sys as _sys
+            sys_rows = [
+                ("OS", platform.system() + " " + platform.release() + " " + platform.version()),
+                ("Architecture", platform.machine()),
+                ("CPU", platform.processor() or "N/A"),
+            ]
+            try:
+                import psutil as _ps
+                sys_rows.append(("CPU 코어 (물리)", str(_ps.cpu_count(logical=False))))
+                sys_rows.append(("CPU 코어 (논리)", str(_ps.cpu_count(logical=True))))
+                mem = _ps.virtual_memory()
+                sys_rows.append(("RAM 총량", f"{mem.total / 1024**3:.1f} GB"))
+            except Exception:
+                pass
+            try:
+                import onnxruntime as _ort
+                sys_rows.append(("ONNX Runtime", _ort.__version__))
+                sys_rows.append(("ORT Providers", ", ".join(_ort.get_available_providers())))
+            except Exception:
+                pass
+            try:
+                _CREATE = 0x08000000 if _sys.platform == "win32" else 0
+                gpu_out = subprocess.check_output(
+                    ["nvidia-smi", "--query-gpu=name,driver_version,memory.total,pcie.link.gen.current,pcie.link.width.current",
+                     "--format=csv,noheader,nounits"],
+                    text=True, timeout=3, creationflags=_CREATE
+                ).strip()
+                for gi, line in enumerate(gpu_out.split("\n")):
+                    parts = [p.strip() for p in line.split(",")]
+                    if len(parts) >= 5:
+                        sys_rows.append((f"GPU {gi}", parts[0]))
+                        sys_rows.append((f"GPU {gi} Driver", parts[1]))
+                        sys_rows.append((f"GPU {gi} VRAM", f"{parts[2]} MB"))
+                        sys_rows.append((f"GPU {gi} PCIe Gen", parts[3]))
+                        sys_rows.append((f"GPU {gi} PCIe Width", f"x{parts[4]}"))
+            except Exception:
+                sys_rows.append(("GPU", "N/A"))
+            try:
+                import torch
+                sys_rows.append(("PyTorch", torch.__version__))
+                sys_rows.append(("CUDA (torch)", torch.version.cuda or "N/A"))
+            except Exception:
+                pass
+            sys_rows.append(("Python", _sys.version.split()[0]))
+
+            ws_sys.append(["항목", "값"])
+            for cell in ws_sys[1]:
+                cell.font = Font(bold=True, color="FFFFFF")
+                cell.fill = header_fill
+                cell.alignment = Alignment(horizontal="center")
+            for key, val in sys_rows:
+                ws_sys.append([key, val])
+            ws_sys.column_dimensions["A"].width = 25
+            ws_sys.column_dimensions["B"].width = 60
 
             wb.save(path)
             QMessageBox.information(self, "저장 완료", f"저장 완료:\n{path}")

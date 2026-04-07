@@ -120,10 +120,11 @@ async function pickFile(inputId, filters) {
 let _slotN = 0;
 async function addModelSlot(containerId, listId) {
   try {
-    const r = await API.selectFile({ filters: 'ONNX (*.onnx)' });
-    if (!r.path) return;
-    // Could be multiple paths in future; for now single
-    _addOneSlot(containerId, listId, r.path);
+    const r = await API.post('/api/fs/select-multi', { filters: 'ONNX (*.onnx)' });
+    if (!r.paths || !r.paths.length) return;
+    for (const path of r.paths) {
+      _addOneSlot(containerId, listId, path);
+    }
   } catch(e) {}
 }
 function _addOneSlot(containerId, listId, path) {

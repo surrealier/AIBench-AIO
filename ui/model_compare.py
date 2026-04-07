@@ -13,9 +13,24 @@ from PySide6.QtWidgets import (
     QSplitter,
 )
 
-from core.model_loader import load_model
+from core.model_loader import load_model, MODEL_TYPES
 from core.inference import run_inference, convert_darknet_to_unified, UNIFIED_NAMES
 from ui import theme
+
+
+def _populate_model_type_combo(combo):
+    """모든 지원 모델 타입으로 콤보박스 채우기"""
+    combo.clear()
+    for key, label in MODEL_TYPES.items():
+        combo.addItem(label, key)
+    from core.app_config import AppConfig
+    for name in AppConfig().custom_model_types:
+        combo.addItem(name, f"custom:{name}")
+
+
+def _get_model_type(combo):
+    """콤보박스에서 모델 타입 키 반환"""
+    return combo.currentData() or "yolo"
 
 
 # ------------------------------------------------------------------ #
@@ -60,11 +75,7 @@ class _CompareWorker(QThread):
                 if frame is None:
                     continue
                 res_a = run_inference(mi_a, frame, self.conf)
-                if self.model_a[1] == "darknet":
-                    res_a = convert_darknet_to_unified(res_a)
                 res_b = run_inference(mi_b, frame, self.conf)
-                if self.model_b[1] == "darknet":
-                    res_b = convert_darknet_to_unified(res_b)
                 results.append((fp, res_a, res_b))
                 self.progress.emit(i + 1, len(files))
 
@@ -127,7 +138,7 @@ class ModelCompareView(QWidget):
         btn_a.clicked.connect(lambda: self._browse_model(self._le_a))
         row_a.addWidget(btn_a)
         self._combo_a = QComboBox()
-        self._combo_a.addItems(["YOLO", "CenterNet"])
+        _populate_model_type_combo(self._combo_a)
         row_a.addWidget(self._combo_a)
         g.addLayout(row_a)
 
@@ -140,7 +151,7 @@ class ModelCompareView(QWidget):
         btn_b.clicked.connect(lambda: self._browse_model(self._le_b))
         row_b.addWidget(btn_b)
         self._combo_b = QComboBox()
-        self._combo_b.addItems(["YOLO", "CenterNet"])
+        _populate_model_type_combo(self._combo_b)
         row_b.addWidget(self._combo_b)
         g.addLayout(row_b)
 
@@ -223,8 +234,8 @@ class ModelCompareView(QWidget):
             QMessageBox.warning(self, "알림", "이미지 폴더를 선택하세요.")
             return
 
-        a_type = "yolo" if self._combo_a.currentIndex() == 0 else "darknet"
-        b_type = "yolo" if self._combo_b.currentIndex() == 0 else "darknet"
+        a_type = _get_model_type(self._combo_a)
+        b_type = _get_model_type(self._combo_b)
 
         self._btn_run.setEnabled(False)
         self._prog.setValue(0)
@@ -243,6 +254,15 @@ class ModelCompareView(QWidget):
         self._index = 0
         self._slider.setRange(0, max(0, len(results) - 1))
         self._slider.setValue(0)
+        # 모델 이름 저장
+        try:
+            self._names_a = load_model(self._le_a.text(), model_type=_get_model_type(self._combo_a)).names
+        except Exception:
+            self._names_a = {}
+        try:
+            self._names_b = load_model(self._le_b.text(), model_type=_get_model_type(self._combo_b)).names
+        except Exception:
+            self._names_b = {}
         self._show_current()
 
     def _show_current(self):
@@ -255,8 +275,8 @@ class ModelCompareView(QWidget):
         if frame is None:
             return
 
-        vis_a = _draw_boxes(frame, res_a, UNIFIED_NAMES)
-        vis_b = _draw_boxes(frame, res_b, UNIFIED_NAMES)
+        vis_a = _draw_boxes(frame, res_a, getattr(self, '_names_a', None) or UNIFIED_NAMES)
+        vis_b = _draw_boxes(frame, res_b, getattr(self, '_names_b', None) or UNIFIED_NAMES)
 
         w = max(self._lbl_a.width(), 400)
         h = max(self._lbl_a.height(), 300)

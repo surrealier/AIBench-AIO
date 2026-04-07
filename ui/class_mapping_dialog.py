@@ -242,6 +242,11 @@ class ClassMappingDialog(QDialog):
     def _build_ui(self):
         root = QVBoxLayout(self)
 
+        # 다이얼로그 배경색 명시 (테마 적용)
+        self.setStyleSheet(f"QDialog {{ background-color: {theme.color('bg_default')}; }}"
+                           f"QLabel {{ color: {theme.color('text_default')}; }}"
+                           f"QGroupBox {{ color: {theme.color('text_default')}; }}")
+
         top = QHBoxLayout()
         self._chk_mapped = QCheckBox("매핑된 클래스만 평가")
         self._chk_mapped.setChecked(self._mapped_only)

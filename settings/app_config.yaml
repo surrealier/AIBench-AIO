@@ -324,10 +324,61 @@ class_styles:
     color: null
     enabled: true
     thickness: null
-conf_threshold: 0.25
+conf_threshold: 0.24
+custom_model_types:
+  custom_1:
+    attr_roles:
+    - x1
+    - y1
+    - width
+    - height
+    - conf_class0
+    - conf_class1
+    - conf_class2
+    - conf_class3
+    - conf_class4
+    - conf_class5
+    - conf_class6
+    - conf_class7
+    - conf_class8
+    conf_threshold: 0.26
+    coord_format: xyxy
+    dim_roles:
+    - batch
+    - num_detections
+    - attributes
+    has_objectness: false
+    nms: true
+    output_index: 0
+  test:
+    attr_roles:
+    - x1
+    - y1
+    - width
+    - height
+    - conf_class0
+    - conf_class1
+    - conf_class2
+    - conf_class3
+    - conf_class4
+    - conf_class5
+    - conf_class6
+    - conf_class7
+    - conf_class8
+    conf_threshold: 0.96
+    coord_format: xyxy
+    dim_roles:
+    - batch
+    - num_detections
+    - attributes
+    has_objectness: false
+    nms: true
+    output_index: 0
+default_model_path: ''
 label_size: 0.55
 model_type: darknet
 models_dir: Models
 show_confidence: true
+show_label_bg: true
 show_labels: true
 videos_dir: Videos

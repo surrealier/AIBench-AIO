@@ -60,7 +60,7 @@ def start_server(port: int):
     logging.getLogger().addHandler(logging.StreamHandler())
     try:
         from server import app
-        uvicorn.run(app, host="127.0.0.1", port=port, log_level="info")
+        uvicorn.run(app, host="127.0.0.1", port=port, log_level="warning")
     except Exception as e:
         logging.exception(f"Server crashed: {e}")
         print(f"\n[FATAL] Server error: {e}", file=sys.stderr)
@@ -105,7 +105,7 @@ def main():
             print("Opening native window...")
             ico = str(ROOT / "assets" / ("icon.ico" if sys.platform == "win32" else "icon.png"))
             webview.create_window(
-                "Visualizer",
+                "AIO",
                 url,
                 width=1400,
                 height=900,

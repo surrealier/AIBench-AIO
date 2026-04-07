@@ -5,9 +5,6 @@ on:
     tags:
       - 'v*'
 
-env:
-  QT_QPA_PLATFORM: offscreen
-
 jobs:
   build-windows:
     runs-on: windows-latest
@@ -16,24 +13,87 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -r requirements-web.txt
           pip install pyinstaller
+
       - name: Create required directories
-        run: |
-          mkdir -p Videos Models snapshots recordings ep_packages
         shell: bash
+        run: mkdir -p Models settings
+
       - name: Build with PyInstaller
         run: pyinstaller visualizer.spec
-      - name: Package
-        run: Compress-Archive -Path dist/Visualizer -DestinationPath AIBench-AIO-Windows.zip
+
+      # ZIP portable
+      - name: Package ZIP
         shell: pwsh
+        run: Compress-Archive -Path dist/Visualizer -DestinationPath Visualizer-Windows-portable.zip
+
+      # MSI installer via WiX
+      - name: Install WiX Toolset
+        shell: pwsh
+        run: |
+          dotnet tool install --global wix --version 5.0.2
+          wix extension add WixToolset.UI.wixext/5.0.2 -g
+
+      - name: Generate WiX source
+        shell: pwsh
+        run: |
+          $version = "${{ github.ref_name }}".TrimStart('v')
+          if ($version -notmatch '^\d+\.\d+\.\d+') { $version = "1.0.0" }
+          @"
+          <?xml version="1.0" encoding="UTF-8"?>
+          <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+               xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
+            <Package Name="Visualizer"
+                     Manufacturer="Visualizer"
+                     Version="$version"
+                     UpgradeCode="E8A3F1B2-4C5D-6E7F-8A9B-0C1D2E3F4A5B">
+              <MajorUpgrade DowngradeErrorMessage="A newer version is already installed." />
+              <MediaTemplate EmbedCab="yes" />
+              <StandardDirectory Id="ProgramFiles6432Folder">
+                <Directory Id="INSTALLFOLDER" Name="Visualizer">
+                  <Component Id="MainExe" Guid="*">
+                    <File Source="dist\Visualizer\Visualizer.exe" KeyPath="yes" />
+                  </Component>
+                </Directory>
+              </StandardDirectory>
+              <ComponentGroupRef Id="HarvestedFiles" />
+              <Feature Id="Complete" Level="1">
+                <ComponentRef Id="MainExe" />
+                <ComponentGroupRef Id="HarvestedFiles" />
+              </Feature>
+              <ui:WixUI Id="WixUI_InstallDir" InstallDirectory="INSTALLFOLDER" />
+            </Package>
+          </Wix>
+          "@ | Out-File -Encoding utf8 installer.wxs
+
+      - name: Harvest files & build MSI
+        shell: pwsh
+        run: |
+          wix build installer.wxs `
+            -ext WixToolset.UI.wixext `
+            -bindpath dist/Visualizer `
+            -o Visualizer-Windows.msi
+        continue-on-error: true
+
+      - name: Fallback if MSI failed
+        if: ${{ !hashFiles('Visualizer-Windows.msi') }}
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "Visualizer-Windows.msi")) {
+            echo "MSI build skipped — ZIP only"
+          }
+
       - uses: actions/upload-artifact@v4
         with:
           name: windows-build
-          path: AIBench-AIO-Windows.zip
+          path: |
+            Visualizer-Windows-portable.zip
+            Visualizer-Windows.msi
 
   build-macos:
     runs-on: macos-latest
@@ -42,21 +102,38 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -r requirements-web.txt
           pip install pyinstaller
+
       - name: Create required directories
-        run: mkdir -p Videos Models snapshots recordings
+        run: mkdir -p Models settings
+
       - name: Build with PyInstaller
         run: pyinstaller visualizer_mac.spec
-      - name: Package
-        run: cd dist && zip -r ../AIBench-AIO-macOS.zip Visualizer.app || zip -r ../AIBench-AIO-macOS.zip Visualizer
+
+      # DMG
+      - name: Create DMG
+        run: |
+          mkdir -p dmg_staging
+          cp -R dist/Visualizer.app dmg_staging/
+          ln -s /Applications dmg_staging/Applications
+          hdiutil create -volname "Visualizer" -srcfolder dmg_staging \
+            -ov -format UDZO Visualizer-macOS.dmg
+
+      # ZIP fallback
+      - name: Package ZIP
+        run: cd dist && zip -r ../Visualizer-macOS.zip Visualizer.app
+
       - uses: actions/upload-artifact@v4
         with:
           name: macos-build
-          path: AIBench-AIO-macOS.zip
+          path: |
+            Visualizer-macOS.dmg
+            Visualizer-macOS.zip
 
   release:
     needs: [build-windows, build-macos]
@@ -67,9 +144,16 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
+
+      - name: List artifacts
+        run: find artifacts -type f
+
       - uses: softprops/action-gh-release@v2
         with:
           files: |
-            artifacts/windows-build/AIBench-AIO-Windows.zip
-            artifacts/macos-build/AIBench-AIO-macOS.zip
+            artifacts/windows-build/Visualizer-Windows-portable.zip
+            artifacts/windows-build/Visualizer-Windows.msi
+            artifacts/macos-build/Visualizer-macOS.dmg
+            artifacts/macos-build/Visualizer-macOS.zip
           generate_release_notes: true
+          fail_on_unmatched_files: false

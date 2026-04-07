@@ -76,7 +76,7 @@ class DetectThread(QThread):
         self._seek_to = frame_idx
 
     def set_speed(self, speed: float):
-        self._speed = max(0.1, speed)
+        self._speed = max(1, int(speed))
 
     def step_forward(self):
         """1프레임 전진 (일시정지 상태에서만)"""
@@ -119,6 +119,13 @@ class DetectThread(QThread):
             if not ret:
                 break
 
+            # 프레임 스킵
+            skip = max(0, int(self._speed) - 1)
+            for _ in range(skip):
+                r2, _ = cap.read()
+                if not r2:
+                    break
+
             self._current_frame = int(cap.get(cv2.CAP_PROP_POS_FRAMES)) - 1
 
             # 추론 (배치 처리)
@@ -154,7 +161,7 @@ class DetectThread(QThread):
                         self.frame_ready.emit(bf, br)
                         self.progress_updated.emit(self._current_frame, total_frames)
                         # 다음 프레임 표시 시점까지 대기
-                        target = emit_t0 + (j + 1) * frame_delay / self._speed
+                        target = emit_t0 + (j + 1) * frame_delay
                         wait = target - time.perf_counter()
                         if wait > 0:
                             time.sleep(wait)
@@ -205,7 +212,7 @@ class DetectThread(QThread):
 
             # 재생 속도 제어
             elapsed = time.perf_counter() - t_start
-            sleep_time = frame_delay / self._speed - elapsed
+            sleep_time = frame_delay - elapsed
             if sleep_time > 0:
                 time.sleep(sleep_time)
 
