@@ -15,6 +15,7 @@ from PySide6.QtWidgets import (
 from core.model_loader import ModelInfo, load_model
 from core.inference import (run_inference, convert_darknet_to_unified,
                             run_classification, ClassificationResult, UNIFIED_NAMES)
+from ui import theme
 
 
 # ------------------------------------------------------------------ #
@@ -1029,8 +1030,9 @@ class EvaluationTab(QWidget):
         ncols = self._table.columnCount() - 1
         for r in range(self._table.rowCount()):
             is_best = (r == best_row)
-            bg = QColor(46, 80, 46) if is_best else QColor(30, 30, 46)
-            fg = QColor(166, 227, 161) if is_best else QColor(205, 214, 244)
+            bg_hex, fg_hex = theme.best_cell_colors() if is_best else theme.normal_cell_colors()
+            bg = QColor(bg_hex)
+            fg = QColor(fg_hex)
             for c in range(ncols):
                 item = self._table.item(r, c)
                 if item:

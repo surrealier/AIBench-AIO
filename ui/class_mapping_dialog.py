@@ -7,14 +7,16 @@ from PySide6.QtWidgets import (
     QScrollArea, QDialogButtonBox, QGroupBox, QGridLayout,
 )
 
+from ui import theme
+
 _ROW_H = 36
 _DOT_R = 8
 _SNAP_DIST = 24
 _PAD_X = 16
 _COL_W = 180
-_LINE_COLOR = QColor("#89b4fa")
-_DOT_COLOR_MODEL = QColor("#89b4fa")
-_DOT_COLOR_GT = QColor("#a6e3a1")
+_LINE_COLOR = QColor("#286df8")
+_DOT_COLOR_MODEL = QColor("#286df8")
+_DOT_COLOR_GT = QColor("#00a43f")
 
 
 class MappingWidget(QWidget):

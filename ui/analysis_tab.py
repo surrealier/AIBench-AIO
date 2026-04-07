@@ -27,6 +27,7 @@ from core.inference import (
     postprocess_darknet, postprocess_v5, postprocess_v8,
 )
 from core.model_loader import ModelInfo, load_model
+from ui import theme
 
 # ── Matplotlib 옵셔널 임포트 ─────────────────────────────────────────────────
 Figure: Any = None
@@ -501,7 +502,7 @@ class PreprocessingTab(QWidget):
         self._insight_lay = QVBoxLayout(self._insight_group)
         self._lbl_insight = QLabel("추론 실행 후 인사이트가 표시됩니다.")
         self._lbl_insight.setWordWrap(True)
-        self._lbl_insight.setStyleSheet("font-size: 11px; padding: 4px;")
+        self._lbl_insight.setStyleSheet(theme.muted_text_style())
         self._insight_lay.addWidget(self._lbl_insight)
         layout.addWidget(self._insight_group)
 
@@ -523,7 +524,7 @@ class PreprocessingTab(QWidget):
         pp_left = QVBoxLayout()
         pp_left.setSpacing(3)
         pp_left_lbl = QLabel("전처리 방식")
-        pp_left_lbl.setStyleSheet("font-weight: bold; font-size: 11px;")
+        pp_left_lbl.setStyleSheet("font-weight: 600; font-size: 11px;")
         pp_left.addWidget(pp_left_lbl)
 
         self._pp_checks: dict = {}
@@ -582,7 +583,7 @@ class PreprocessingTab(QWidget):
 
         self._lbl_pp_compare = QLabel("")
         self._lbl_pp_compare.setWordWrap(True)
-        self._lbl_pp_compare.setStyleSheet("font-size: 11px; padding: 4px; background: #F5F5F5; border-radius: 4px;")
+        self._lbl_pp_compare.setStyleSheet(f"font-size: 11px; padding: 4px; background: {theme.color('bg_raised')}; border-radius: 6px;")
         pp_right.addWidget(self._lbl_pp_compare)
         pp_main.addLayout(pp_right, stretch=1)
 
@@ -1089,7 +1090,7 @@ class FeatureMapTab(QWidget):
                 "pip install onnx"
             )
             msg.setAlignment(Qt.AlignCenter)
-            msg.setStyleSheet("color: #888; font-size: 13px;")
+            msg.setStyleSheet(theme.placeholder_style())
             layout.addWidget(msg)
             return
 
@@ -1657,7 +1658,7 @@ class BottleneckAnalysisWidget(QWidget):
         self._lbl_inf_ms  = QLabel("—")
         self._lbl_post_ms = QLabel("—")
         self._lbl_total_ms = QLabel("—")
-        self._lbl_btype.setStyleSheet("font-weight: bold; font-size: 13px;")
+        self._lbl_btype.setStyleSheet(theme.heading_style())
 
         # 툴팁: 병목 유형 평가 기준 설명
         self._lbl_btype.setToolTip(
@@ -1686,7 +1687,7 @@ class BottleneckAnalysisWidget(QWidget):
         rec_lay = QVBoxLayout(rec_group)
         self._lbl_rec = QLabel("—")
         self._lbl_rec.setWordWrap(True)
-        self._lbl_rec.setStyleSheet("font-size: 11px;")
+        self._lbl_rec.setStyleSheet(theme.muted_text_style())
         rec_lay.addWidget(self._lbl_rec)
         diag_lay.addWidget(rec_group)
 
@@ -1875,7 +1876,7 @@ class BottleneckAnalysisWidget(QWidget):
         if insight:
             lbl = QLabel(insight)
             lbl.setWordWrap(True)
-            lbl.setStyleSheet("font-size: 11px; color: #333; padding: 4px; background: #F5F5F5; border-radius: 4px;")
+            lbl.setStyleSheet(f"font-size: 11px; padding: 4px; background: {theme.color('bg_raised')}; border-radius: 6px;")
             lay.addWidget(lbl)
         self._charts_lay.addWidget(group)
 
@@ -1931,7 +1932,7 @@ class BottleneckAnalysisWidget(QWidget):
             "Identity/Gather/Reshape 등을 자동 제거할 수 있습니다."
         )
         summary.setWordWrap(True)
-        summary.setStyleSheet("font-size: 11px; color: #333; padding: 4px; background: #FFF3E0; border-radius: 4px;")
+        summary.setStyleSheet(f"font-size: 11px; padding: 4px; background: {theme.color('warning_bg')}; border-radius: 6px;")
         lay.addWidget(summary)
         self._charts_lay.addWidget(group)
 
@@ -1962,7 +1963,7 @@ class BottleneckAnalysisWidget(QWidget):
         if insight:
             lbl = QLabel(insight)
             lbl.setWordWrap(True)
-            lbl.setStyleSheet("font-size: 11px; color: #333; padding: 4px; background: #E8F5E9; border-radius: 4px;")
+            lbl.setStyleSheet(f"font-size: 11px; padding: 4px; background: {theme.color('success_bg')}; border-radius: 6px;")
             lay.addWidget(lbl)
         self._charts_lay.addWidget(group)
 

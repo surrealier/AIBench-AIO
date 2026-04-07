@@ -44,6 +44,7 @@ from ui.settings_tab import SettingsTab
 from ui.stats_widget import StatsWidget
 from ui.video_widget import VideoWidget
 from ui.i18n import t, set_language, get_language
+from ui import theme
 
 
 class MainWindow(QMainWindow):
@@ -69,43 +70,13 @@ class MainWindow(QMainWindow):
     # ------------------------------------------------------------------ #
     # UI 구성
     # ------------------------------------------------------------------ #
-    _DARK_STYLE = """
-        QMainWindow, QWidget { background-color: #1e1e2e; color: #cdd6f4; }
-        QTabWidget::pane { border: 1px solid #45475a; background: #1e1e2e; }
-        QTabBar::tab { background: #313244; color: #bac2de; padding: 7px 16px; margin-right: 2px; border-top-left-radius: 4px; border-top-right-radius: 4px; }
-        QTabBar::tab:selected { background: #45475a; color: #cdd6f4; }
-        QTabBar::tab:hover { background: #585b70; }
-        QGroupBox { border: 1px solid #45475a; border-radius: 6px; margin-top: 10px; padding-top: 16px; color: #a6adc8; }
-        QGroupBox::title { subcontrol-origin: margin; left: 10px; padding: 0 6px; }
-        QPushButton { background: #45475a; color: #cdd6f4; border: 1px solid #585b70; border-radius: 4px; padding: 5px 14px; min-height: 18px; }
-        QPushButton:hover { background: #585b70; }
-        QPushButton:pressed { background: #6c7086; }
-        QPushButton:disabled { background: #313244; color: #585b70; }
-        QLineEdit, QTextEdit, QSpinBox, QDoubleSpinBox, QComboBox { background: #313244; color: #cdd6f4; border: 1px solid #45475a; border-radius: 3px; padding: 4px 6px; min-height: 18px; }
-        QTableWidget { background: #1e1e2e; color: #cdd6f4; gridline-color: #45475a; }
-        QTableWidget QTableWidgetItem { color: #cdd6f4; }
-        QHeaderView::section { background: #313244; color: #a6adc8; border: 1px solid #45475a; padding: 5px; }
-        QProgressBar { background: #313244; border: 1px solid #45475a; border-radius: 3px; text-align: center; color: #cdd6f4; min-height: 16px; padding: 1px; }
-        QProgressBar::chunk { background: #89b4fa; border-radius: 2px; }
-        QScrollArea { border: none; }
-        QLabel { color: #cdd6f4; }
-        QCheckBox { color: #cdd6f4; }
-        QListWidget { background: #313244; color: #cdd6f4; border: 1px solid #45475a; }
-        QListWidget::item:selected { background: #45475a; }
-        QStatusBar { background: #181825; color: #a6adc8; }
-        QMenuBar { background: #181825; color: #cdd6f4; }
-        QMenuBar::item:selected { background: #45475a; }
-        QMenu { background: #313244; color: #cdd6f4; border: 1px solid #45475a; }
-        QMenu::item:selected { background: #45475a; }
-        QSlider::groove:horizontal { background: #45475a; height: 6px; border-radius: 3px; }
-        QSlider::handle:horizontal { background: #89b4fa; width: 14px; margin: -4px 0; border-radius: 7px; }
-        QSplitter::handle { background: #45475a; }
-    """
+    _DARK_STYLE = None  # replaced by theme system
 
     def _build_ui(self):
         # 라이트 모드 기본
         self._dark_mode = False
-        # 다크 스타일은 토글 시 적용
+        theme.set_dark(False)
+        self.setStyleSheet(theme.generate_qss(dark=False))
 
         # 메뉴바
         menubar = QMenuBar(self)
@@ -541,7 +512,8 @@ class MainWindow(QMainWindow):
 
     def _toggle_dark_mode(self, checked):
         self._dark_mode = checked
-        self.setStyleSheet(self._DARK_STYLE if checked else "")
+        theme.set_dark(checked)
+        self.setStyleSheet(theme.generate_qss(dark=checked))
 
     def _change_language(self, lang):
         set_language(lang)

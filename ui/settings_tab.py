@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
 
 from core.app_config import AppConfig
 from ui.video_widget import get_palette_color
+from ui import theme
 
 
 class SettingsTab(QWidget):
@@ -152,7 +153,7 @@ class SettingsTab(QWidget):
             btn_color = QPushButton()
             btn_color.setFixedSize(40, 22)
             r, g, b = color[2], color[1], color[0]  # BGR→RGB
-            btn_color.setStyleSheet(f"background-color: rgb({r},{g},{b}); border: 1px solid #888;")
+            btn_color.setStyleSheet(f"background-color: rgb({r},{g},{b}); border: 1px solid {theme.color('border_default')}; border-radius: 4px;")
             btn_color.clicked.connect(lambda _, cid=cls_id, btn=btn_color: self._on_color_click(cid, btn))
             self._table.setCellWidget(row, 2, btn_color)
 
@@ -209,7 +210,7 @@ class SettingsTab(QWidget):
             style.color = bgr
             self._config.set_class_style(cls_id, style)
             r, g, b = color.red(), color.green(), color.blue()
-            btn.setStyleSheet(f"background-color: rgb({r},{g},{b}); border: 1px solid #888;")
+            btn.setStyleSheet(f"background-color: rgb({r},{g},{b}); border: 1px solid {theme.color('border_default')}; border-radius: 4px;")
             self.settings_changed.emit()
 
     def _on_class_thickness(self, cls_id: int, val: int):

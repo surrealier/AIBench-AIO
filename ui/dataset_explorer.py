@@ -15,6 +15,8 @@ from PySide6.QtWidgets import (
     QTableWidgetItem, QHeaderView, QSlider,
 )
 
+from ui import theme
+
 
 # ------------------------------------------------------------------ #
 # 데이터 로드 워커
@@ -122,7 +124,7 @@ class _ThumbLabel(QLabel):
         self._index = index
         self.setFixedSize(160, 160)
         self.setAlignment(Qt.AlignCenter)
-        self.setStyleSheet("border: 2px solid #444; background: #222;")
+        self.setStyleSheet(theme.image_card_style())
 
     def mousePressEvent(self, ev):
         self.clicked.emit(self._index)
@@ -386,7 +388,7 @@ class DatasetExplorer(QWidget):
         img = cv2.imread(fp)
         if img is None:
             pix = QPixmap(size, size)
-            pix.fill(QColor(40, 40, 40))
+            pix.fill(QColor(theme.color("bg_raised")))
             return pix
         # 박스 그리기
         colors = [(0, 255, 0), (255, 0, 0), (0, 0, 255), (255, 255, 0),

@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
 )
 
 from core.benchmark_runner import BenchmarkConfig, BenchmarkRunner
+from ui import theme
 
 _MAX_MODELS = 10
 _WARMUP = 300
@@ -56,7 +57,7 @@ class ModelSlotWidget(QGroupBox):
         row1.setSpacing(6)
 
         self._lbl_path = QLabel("모델 파일을 선택하세요")
-        self._lbl_path.setStyleSheet("color: gray; font-size: 11px;")
+        self._lbl_path.setStyleSheet(theme.muted_text_style())
         self._lbl_path.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
 
         btn_sel = QPushButton("모델 선택…")
@@ -70,7 +71,7 @@ class ModelSlotWidget(QGroupBox):
 
         btn_rm = QPushButton("X")
         btn_rm.setFixedSize(24, 24)
-        btn_rm.setStyleSheet("color: red; font-weight: bold; border: none;")
+        btn_rm.setStyleSheet(theme.remove_btn_style())
         btn_rm.setToolTip("이 슬롯 제거")
         btn_rm.clicked.connect(lambda: self.removed.emit(self))
 
@@ -204,7 +205,7 @@ class BenchmarkTab(QWidget):
 
         cfg_row.addWidget(QLabel("워밍업:"))
         lbl_wu = QLabel(f"{_WARMUP}  (고정)")
-        lbl_wu.setStyleSheet("font-weight: bold;")
+        lbl_wu.setStyleSheet("font-weight: 600;")
         cfg_row.addWidget(lbl_wu)
 
         cfg_row.addSpacing(24)
@@ -223,13 +224,13 @@ class BenchmarkTab(QWidget):
         act_row = QHBoxLayout()
         self._btn_run = QPushButton("벤치마크 실행")
         self._btn_run.setFixedHeight(34)
-        self._btn_run.setStyleSheet("font-size: 13px; font-weight: bold;")
+        self._btn_run.setStyleSheet(theme.heading_style())
         self._btn_run.clicked.connect(self._on_run)
 
         self._btn_stop = QPushButton("중지")
         self._btn_stop.setFixedSize(90, 34)
         self._btn_stop.setEnabled(False)
-        self._btn_stop.setStyleSheet("color: black;")
+        self._btn_stop.setStyleSheet("")
         self._btn_stop.clicked.connect(self._on_stop)
 
         act_row.addWidget(self._btn_run)
@@ -241,7 +242,7 @@ class BenchmarkTab(QWidget):
         self._progress.setTextVisible(True)
         self._progress.setValue(0)
         self._status_lbl = QLabel("대기 중")
-        self._status_lbl.setStyleSheet("font-size: 11px; color: #666;")
+        self._status_lbl.setStyleSheet(theme.muted_text_style())
         root.addWidget(self._progress)
         root.addWidget(self._status_lbl)
 

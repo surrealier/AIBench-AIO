@@ -9,6 +9,8 @@ from PySide6.QtWidgets import (
     QTableWidgetItem, QHeaderView,
 )
 
+from ui import theme
+
 
 class _SampleWorker(QThread):
     progress = Signal(int, int)
@@ -115,7 +117,7 @@ class SmartSampler(QWidget):
                        "• 랜덤: 지정 수만큼 무작위 추출 (시드 고정 가능)\n"
                        "• 층화: 원본 클래스 비율을 유지하면서 축소 샘플링")
         desc.setWordWrap(True)
-        desc.setStyleSheet("color: gray; font-size: 11px; margin-bottom: 4px;")
+        desc.setStyleSheet(theme.description_style())
         root.addWidget(desc)
         # 입력
         for label, attr in [("이미지 폴더:", "_le_img"), ("라벨 폴더:", "_le_lbl"), ("출력 폴더:", "_le_out")]:

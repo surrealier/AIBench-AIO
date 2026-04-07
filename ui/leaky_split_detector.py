@@ -8,6 +8,8 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtGui import QImage, QPixmap
 
+from ui import theme
+
 
 def _compute_dhash(path, size=8):
     img = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
@@ -80,7 +82,7 @@ class LeakySplitDetector(QWidget):
                        "• 누수가 있으면 검증 성능이 과대평가될 수 있으므로 제거 권장\n"
                        "• 더블클릭: 누수 이미지 쌍 나란히 비교")
         desc.setWordWrap(True)
-        desc.setStyleSheet("color: gray; font-size: 11px; margin-bottom: 4px;")
+        desc.setStyleSheet(theme.description_style())
         root.addWidget(desc)
         # 폴더 입력
         g = QGroupBox("Split 폴더")

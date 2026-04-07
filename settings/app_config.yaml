@@ -326,7 +326,7 @@ class_styles:
     thickness: null
 conf_threshold: 0.25
 label_size: 0.55
-model_type: yolo
+model_type: darknet
 models_dir: Models
 show_confidence: true
 show_labels: true

@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
 
 from core.model_loader import load_model
 from core.inference import run_inference, convert_darknet_to_unified, UNIFIED_NAMES
+from ui import theme
 
 
 def _compute_iou(box1, box2):
@@ -275,7 +276,7 @@ class _ErrorGallery(QWidget):
             lbl.setPixmap(QPixmap.fromImage(qimg))
             lbl.setFixedSize(size, size)
             lbl.setAlignment(Qt.AlignCenter)
-            lbl.setStyleSheet("border: 2px solid #444; background: #222;")
+            lbl.setStyleSheet(theme.image_card_style())
             name = UNIFIED_NAMES.get(cid, str(cid))
             if len(entry) == 6:  # FP (has score)
                 lbl.setToolTip(f"{os.path.basename(fp)}\nclass: {name}\nscore: {entry[3]:.3f}")

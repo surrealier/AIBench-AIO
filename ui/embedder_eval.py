@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
 
 from core.model_loader import load_model
 from core.inference import preprocess, preprocess_classification, letterbox
+from ui import theme
 
 
 class _EmbedWorker(QThread):
@@ -273,5 +274,5 @@ class EmbedderEvalTab(QWidget):
             card.setToolTip(f"{os.path.basename(fp)}\nsim: {sims[j]:.4f}\nlabel: {self._labels[j]}")
             card.setFixedSize(size, size)
             card.setAlignment(Qt.AlignCenter)
-            card.setStyleSheet("border: 2px solid #444; background: #222;")
+            card.setStyleSheet(theme.image_card_style())
             self._grid.addWidget(card, r // cols, r % cols)

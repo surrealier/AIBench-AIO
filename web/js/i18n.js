@@ -1,0 +1,142 @@
+/* i18n — Internationalization for Visualizer Web UI */
+const I18n = {
+  _lang: localStorage.getItem('visualizer-lang') || (navigator.language.startsWith('ko') ? 'ko' : 'en'),
+  _strings: {
+    // Sidebar sections
+    'sec.inference':   { en: 'Inference',   ko: '추론' },
+    'sec.evaluation':  { en: 'Evaluation',  ko: '평가' },
+    'sec.analysis':    { en: 'Analysis',    ko: '분석' },
+    'sec.data':        { en: 'Data',        ko: '데이터' },
+    'sec.quality':     { en: 'Quality',     ko: '품질검사' },
+    'sec.batch':       { en: 'Batch',       ko: '일괄처리' },
+    // Nav items
+    'nav.viewer':           { en: 'Viewer',            ko: '뷰어' },
+    'nav.settings':         { en: 'Settings',          ko: '설정' },
+    'nav.evaluation':       { en: 'Evaluation',        ko: '평가' },
+    'nav.benchmark':        { en: 'Benchmark',         ko: '벤치마크' },
+    'nav.segmentation':     { en: 'Segmentation',      ko: '세그멘테이션' },
+    'nav.clip':             { en: 'CLIP',              ko: 'CLIP' },
+    'nav.embedder':         { en: 'Embedder',          ko: '임베더' },
+    'nav.analysis':         { en: 'Analysis',          ko: '분석' },
+    'nav.model-compare':    { en: 'Model Compare',     ko: '모델 비교' },
+    'nav.error-analyzer':   { en: 'Error Analyzer',    ko: '오탐/미탐 분석' },
+    'nav.conf-optimizer':   { en: 'Conf Optimizer',    ko: 'Conf 최적화' },
+    'nav.embedding-viewer': { en: 'Embedding Viewer',  ko: '임베딩 뷰어' },
+    'nav.explorer':         { en: 'Explorer',          ko: '탐색기' },
+    'nav.splitter':         { en: 'Splitter',          ko: '분할' },
+    'nav.converter':        { en: 'Converter',         ko: '포맷변환' },
+    'nav.remapper':         { en: 'Remapper',          ko: '클래스매핑' },
+    'nav.merger':           { en: 'Merger',            ko: '병합' },
+    'nav.sampler':          { en: 'Smart Sampler',     ko: '스마트 샘플링' },
+    'nav.anomaly':          { en: 'Label Anomaly',     ko: '라벨이상' },
+    'nav.quality':          { en: 'Image Quality',     ko: '이미지 품질' },
+    'nav.duplicate':        { en: 'Duplicates',        ko: '중복탐지' },
+    'nav.leaky':            { en: 'Leaky Split',       ko: '누수탐지' },
+    'nav.similarity':       { en: 'Similarity',        ko: '유사검색' },
+    'nav.batch':            { en: 'Batch Inference',   ko: '일괄 추론' },
+    'nav.augmentation':     { en: 'Augmentation',      ko: '증강' },
+    // Common
+    'dark_mode':    { en: 'Dark mode',    ko: '다크 모드' },
+    'language':     { en: 'Language',     ko: '언어' },
+    'ready':        { en: 'Ready',        ko: '준비' },
+    'browse':       { en: 'Browse',       ko: '찾아보기' },
+    'run':          { en: 'Run',          ko: '실행' },
+    'stop':         { en: 'Stop',         ko: '중지' },
+    'save':         { en: 'Save',         ko: '저장' },
+    'reset':        { en: 'Reset',        ko: '초기화' },
+    'open':         { en: 'Open',         ko: '열기' },
+    'close':        { en: 'Close',        ko: '닫기' },
+    'export':       { en: 'Export',       ko: '내보내기' },
+    'no_file':      { en: 'No file loaded', ko: '파일 없음' },
+    'select_model': { en: 'Select ONNX model...', ko: 'ONNX 모델 선택...' },
+    'add_model':    { en: '+ Add Model',  ko: '+ 모델 추가' },
+    // Viewer
+    'viewer.open_hint':     { en: 'Open an image or video to start inference', ko: '이미지 또는 비디오를 열어 추론을 시작하세요' },
+    'viewer.det_results':   { en: 'Detection Results', ko: '탐지 결과' },
+    'viewer.performance':   { en: 'Performance',       ko: '성능' },
+    'viewer.play':          { en: 'Play',    ko: '재생' },
+    'viewer.snapshot':      { en: 'Snapshot', ko: '스냅샷' },
+    'viewer.record':        { en: 'Record',  ko: '녹화' },
+    'viewer.speed':         { en: 'Speed',   ko: '속도' },
+    'viewer.video_info':    { en: 'Video',   ko: '비디오' },
+    'viewer.model_info':    { en: 'Model',   ko: '모델' },
+    'viewer.hw_stats':      { en: 'Hardware (Process)', ko: '하드웨어 (프로세스)' },
+    'viewer.sys_info':      { en: 'System',  ko: '시스템' },
+    'viewer.infer_stats':   { en: 'Inference', ko: '추론' },
+    'viewer.csv_rec':       { en: 'CSV Record', ko: 'CSV 기록' },
+    'viewer.csv_export':    { en: 'CSV Export', ko: 'CSV 저장' },
+    // Settings
+    'settings.model':       { en: 'Model',              ko: '모델' },
+    'settings.display':     { en: 'Display',            ko: '표시' },
+    'settings.class_styles':{ en: 'Class Styles',       ko: '클래스 스타일' },
+    'settings.conf':        { en: 'Confidence Threshold', ko: '신뢰도 임계값' },
+    'settings.model_type':  { en: 'Model Type',         ko: '모델 타입' },
+    'settings.box_thick':   { en: 'Box Thickness',      ko: '박스 두께' },
+    'settings.label_size':  { en: 'Label Size',         ko: '라벨 크기' },
+    'settings.show_labels': { en: 'Show Labels',        ko: '라벨 표시' },
+    'settings.show_conf':   { en: 'Show Confidence',    ko: '신뢰도 표시' },
+    'settings.saved':       { en: 'Settings saved',     ko: '설정 저장됨' },
+    'settings.batch_size':  { en: 'Batch Size',         ko: '배치 크기' },
+    'settings.class_table': { en: 'Per-class Settings', ko: '클래스별 설정' },
+    'settings.enabled':     { en: 'Enabled',            ko: '활성화' },
+    'settings.color':       { en: 'Color',              ko: '색상' },
+    'settings.thickness':   { en: 'Thickness',          ko: '두께' },
+    // Benchmark
+    'bench.models':    { en: 'Models',        ko: '모델' },
+    'bench.config':    { en: 'Configuration', ko: '설정' },
+    'bench.results':   { en: 'Results',       ko: '결과' },
+    'bench.iters':     { en: 'Iterations',    ko: '반복 횟수' },
+    'bench.input_size':{ en: 'Input Size',    ko: '입력 크기' },
+    'bench.warmup':    { en: 'Warmup',        ko: '워밍업' },
+    'bench.fixed':     { en: '300 (fixed)',   ko: '300 (고정)' },
+    'bench.run':       { en: 'Run Benchmark', ko: '벤치마크 실행' },
+    'bench.running':   { en: 'Benchmark running...', ko: '벤치마크 실행 중...' },
+    'bench.complete':  { en: 'Benchmark complete',   ko: '벤치마크 완료' },
+    'bench.no_models': { en: 'No models selected',   ko: '모델이 선택되지 않음' },
+    'bench.add_hint':  { en: 'Click "Add Model" to add benchmark slots', ko: '"모델 추가"를 클릭하여 벤치마크 슬롯을 추가하세요' },
+    'bench.run_hint':  { en: 'Run a benchmark to see results', ko: '벤치마크를 실행하여 결과를 확인하세요' },
+    // Evaluation
+    'eval.setup':      { en: 'Setup',            ko: '설정' },
+    'eval.gt_labels':  { en: 'Ground Truth Labels', ko: 'GT 라벨' },
+    'eval.images':     { en: 'Images Folder',    ko: '이미지 폴더' },
+    'eval.run':        { en: 'Run Evaluation',   ko: '평가 실행' },
+    'eval.results':    { en: 'Results',           ko: '결과' },
+    'eval.run_hint':   { en: 'Run evaluation to see results', ko: '평가를 실행하여 결과를 확인하세요' },
+    // Explorer
+    'explorer.img_dir':    { en: 'Images Directory',  ko: '이미지 디렉토리' },
+    'explorer.lbl_dir':    { en: 'Labels Directory',  ko: '라벨 디렉토리' },
+    'explorer.load':       { en: 'Load Dataset',      ko: '데이터셋 로드' },
+    'explorer.filter':     { en: 'Filter',            ko: '필터' },
+    'explorer.stats':      { en: 'Statistics',        ko: '통계' },
+    'explorer.gallery':    { en: 'Gallery',           ko: '갤러리' },
+    'explorer.load_hint':  { en: 'Load a dataset to browse images', ko: '데이터셋을 로드하여 이미지를 탐색하세요' },
+    // Splitter
+    'splitter.input':      { en: 'Input Dataset',     ko: '입력 데이터셋' },
+    'splitter.output':     { en: 'Output Directory',  ko: '출력 디렉토리' },
+    'splitter.ratio':      { en: 'Split Ratio',       ko: '분할 비율' },
+    'splitter.train':      { en: 'Train',             ko: '학습' },
+    'splitter.val':        { en: 'Val',               ko: '검증' },
+    'splitter.test':       { en: 'Test',              ko: '테스트' },
+    'splitter.stratified': { en: 'Stratified',        ko: '층화 분할' },
+    'splitter.run':        { en: 'Split Dataset',     ko: '데이터셋 분할' },
+    // Generic tab
+    'tab.coming_soon':     { en: 'Full implementation coming soon', ko: '전체 구현 예정' },
+  },
+
+  t(key, params) {
+    const entry = this._strings[key];
+    let s = entry ? (entry[this._lang] || entry.en || key) : key;
+    if (params) Object.entries(params).forEach(([k, v]) => { s = s.replace(`{${k}}`, v); });
+    return s;
+  },
+
+  setLang(lang) {
+    this._lang = lang;
+    localStorage.setItem('visualizer-lang', lang);
+    // Re-render current view
+    App.renderSidebar();
+    App.switchTab(App.currentTab);
+  },
+
+  getLang() { return this._lang; }
+};

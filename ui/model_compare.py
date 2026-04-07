@@ -15,6 +15,7 @@ from PySide6.QtWidgets import (
 
 from core.model_loader import load_model
 from core.inference import run_inference, convert_darknet_to_unified, UNIFIED_NAMES
+from ui import theme
 
 
 # ------------------------------------------------------------------ #
@@ -187,11 +188,11 @@ class ModelCompareView(QWidget):
         splitter = QSplitter(Qt.Horizontal)
         self._lbl_a = QLabel("모델 A")
         self._lbl_a.setAlignment(Qt.AlignCenter)
-        self._lbl_a.setStyleSheet("background: #1a1a1a;")
+        self._lbl_a.setStyleSheet(f"background: {theme.color('bg_raised')};")
         self._lbl_a.setMinimumHeight(400)
         self._lbl_b = QLabel("모델 B")
         self._lbl_b.setAlignment(Qt.AlignCenter)
-        self._lbl_b.setStyleSheet("background: #1a1a1a;")
+        self._lbl_b.setStyleSheet(f"background: {theme.color('bg_raised')};")
         self._lbl_b.setMinimumHeight(400)
         splitter.addWidget(self._lbl_a)
         splitter.addWidget(self._lbl_b)

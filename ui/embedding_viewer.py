@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
 
 from core.model_loader import load_model
 from core.inference import preprocess, preprocess_classification, letterbox
+from ui import theme
 
 
 # ------------------------------------------------------------------ #
@@ -163,7 +164,7 @@ class EmbeddingViewer(QWidget):
         self._chart_container = QVBoxLayout()
         self._lbl_placeholder = QLabel("Embedding을 추출하면 여기에 시각화됩니다.")
         self._lbl_placeholder.setAlignment(Qt.AlignCenter)
-        self._lbl_placeholder.setStyleSheet("color: #888; font-size: 14px;")
+        self._lbl_placeholder.setStyleSheet(theme.placeholder_style())
         self._chart_container.addWidget(self._lbl_placeholder)
         root.addLayout(self._chart_container, 1)
 

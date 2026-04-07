@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
 
 from core.model_loader import load_model
 from core.inference import preprocess, letterbox
+from ui import theme
 
 
 def _run_seg_inference(mi, frame):
@@ -260,9 +261,10 @@ class SegmentationTab(QWidget):
         self._table.setItem(0, 2, QTableWidgetItem(f"{ov['mDice']:.4f}"))
         self._table.setItem(0, 3, QTableWidgetItem(str(ov.get("images", 0))))
         from PySide6.QtGui import QColor
+        bg_hex, fg_hex = theme.best_cell_colors()
         for c in range(4):
-            self._table.item(0, c).setBackground(QColor(46, 80, 46))
-            self._table.item(0, c).setForeground(QColor(166, 227, 161))
+            self._table.item(0, c).setBackground(QColor(bg_hex))
+            self._table.item(0, c).setForeground(QColor(fg_hex))
 
         for r, cid in enumerate(class_keys, 1):
             v = result[cid]

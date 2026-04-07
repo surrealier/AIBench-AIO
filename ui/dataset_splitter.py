@@ -7,6 +7,8 @@ from PySide6.QtWidgets import (
     QCheckBox, QTextEdit, QSpinBox,
 )
 
+from ui import theme
+
 
 def _image_metrics(img):
     """Compute image quality metrics: brightness, contrast, blur, entropy, edge_density, color_richness, snr."""
@@ -241,7 +243,7 @@ class DatasetSplitter(QWidget):
         desc = QLabel("SSIM + 이미지 메트릭(밝기/대비/흐림/SNR/엔트로피/에지밀도/색상풍부도) + 클래스 균형 기반 다양성 분할.\n"
                        "검증셋은 서로 유사하지 않고, 학습셋과도 유사하지 않은 이미지로 구성됩니다.")
         desc.setWordWrap(True)
-        desc.setStyleSheet("color: gray; font-size: 11px; margin-bottom: 4px;")
+        desc.setStyleSheet(theme.description_style())
         root.addWidget(desc)
 
         grp = QGroupBox("분할 설정")

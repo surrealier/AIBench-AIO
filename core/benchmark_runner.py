@@ -9,7 +9,11 @@ from dataclasses import dataclass
 import cv2
 import numpy as np
 import psutil
-from PySide6.QtCore import QThread, Signal
+try:
+    from PySide6.QtCore import QThread, Signal
+    _HAS_QT = True
+except ImportError:
+    _HAS_QT = False
 
 from core.inference import (
     letterbox,
@@ -273,114 +277,112 @@ def run_benchmark_core(
         on_result(result)
 
 
-class BenchmarkRunner(QThread):
-    progress_updated = Signal(int, int, str)
-    result_ready = Signal(object)
-    finished = Signal()
-    error = Signal(str)
+if _HAS_QT:
+    class BenchmarkRunner(QThread):
+        progress_updated = Signal(int, int, str)
+        result_ready = Signal(object)
+        finished = Signal()
+        error = Signal(str)
 
-    def __init__(self, configs: list):
-        super().__init__()
-        self.configs = configs
-        self._stopped = False
+        def __init__(self, configs: list):
+            super().__init__()
+            self.configs = configs
+            self._stopped = False
 
-    def stop(self):
-        self._stopped = True
+        def stop(self):
+            self._stopped = True
 
-    def _run_ep_subprocess(self, ep_key: str, configs: list, total_steps: int, done_offset: int) -> int:
-        """Returns updated done_offset after this EP group finishes."""
-        import dataclasses
-        from core.ep_manager import get_ep_dir, _PROJECT_ROOT, launch_worker
+        def _run_ep_subprocess(self, ep_key: str, configs: list, total_steps: int, done_offset: int) -> int:
+            """Returns updated done_offset after this EP group finishes."""
+            import dataclasses
+            from core.ep_manager import get_ep_dir, _PROJECT_ROOT, launch_worker
 
-        # Prepare task (strip ep_key from configs for subprocess, it uses its own ORT)
-        cfg_dicts = []
-        for c in configs:
-            d = dataclasses.asdict(c)
-            d["src_hw"] = list(d["src_hw"])  # tuple → list for JSON
-            cfg_dicts.append(d)
+            cfg_dicts = []
+            for c in configs:
+                d = dataclasses.asdict(c)
+                d["src_hw"] = list(d["src_hw"])
+                cfg_dicts.append(d)
 
-        task = {
-            "task": "benchmark",
-            "ep_key": ep_key,
-            "ep_dir": str(get_ep_dir(ep_key)),
-            "proj_root": str(_PROJECT_ROOT),
-            "configs": cfg_dicts,
-        }
+            task = {
+                "task": "benchmark",
+                "ep_key": ep_key,
+                "ep_dir": str(get_ep_dir(ep_key)),
+                "proj_root": str(_PROJECT_ROOT),
+                "configs": cfg_dicts,
+            }
 
-        proc = launch_worker(task)
-        local_done = 0
+            proc = launch_worker(task)
+            local_done = 0
 
-        for line in proc.stdout:
-            if self._stopped:
-                proc.terminate()
-                break
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                event = json.loads(line)
-            except Exception:
-                continue
-
-            t = event.get("type")
-            if t == "progress":
-                local_done = event["done"]
-                self.progress_updated.emit(
-                    done_offset + local_done, total_steps, event["msg"]
-                )
-            elif t == "result":
+            for line in proc.stdout:
+                if self._stopped:
+                    proc.terminate()
+                    break
+                line = line.strip()
+                if not line:
+                    continue
                 try:
-                    # src_size and model_size come back as lists, convert to tuples
-                    data = event["data"]
-                    data["src_size"] = tuple(data["src_size"])
-                    data["model_size"] = tuple(data["model_size"])
-                    result = BenchmarkResult(**data)
-                    self.result_ready.emit(result)
-                except Exception as exc:
-                    self.error.emit(f"결과 역직렬화 실패: {exc}")
-            elif t == "error":
-                self.error.emit(event["msg"])
-            elif t == "finished":
-                break
+                    event = json.loads(line)
+                except Exception:
+                    continue
 
-        proc.wait()
-        ep_steps = sum(c.warmup + c.iterations for c in configs)
-        return done_offset + ep_steps
+                t = event.get("type")
+                if t == "progress":
+                    local_done = event["done"]
+                    self.progress_updated.emit(
+                        done_offset + local_done, total_steps, event["msg"]
+                    )
+                elif t == "result":
+                    try:
+                        data = event["data"]
+                        data["src_size"] = tuple(data["src_size"])
+                        data["model_size"] = tuple(data["model_size"])
+                        result = BenchmarkResult(**data)
+                        self.result_ready.emit(result)
+                    except Exception as exc:
+                        self.error.emit(f"결과 역직렬화 실패: {exc}")
+                elif t == "error":
+                    self.error.emit(event["msg"])
+                elif t == "finished":
+                    break
 
-    def run(self):
-        total_steps = sum(cfg.warmup + cfg.iterations for cfg in self.configs)
-        global_done = 0
+            proc.wait()
+            ep_steps = sum(c.warmup + c.iterations for c in configs)
+            return done_offset + ep_steps
 
-        # Group configs by ep_key while preserving original order
-        seen_eps: list = []
-        groups: dict = {}
-        for cfg in self.configs:
-            key = cfg.ep_key
-            if key not in groups:
-                seen_eps.append(key)
-                groups[key] = []
-            groups[key].append(cfg)
+        def run(self):
+            total_steps = sum(cfg.warmup + cfg.iterations for cfg in self.configs)
+            global_done = 0
 
-        for ep_key in seen_eps:
-            if self._stopped:
-                break
-            ep_configs = groups[ep_key]
+            seen_eps: list = []
+            groups: dict = {}
+            for cfg in self.configs:
+                key = cfg.ep_key
+                if key not in groups:
+                    seen_eps.append(key)
+                    groups[key] = []
+                groups[key].append(cfg)
 
-            if ep_key == "auto":
-                _offset = global_done
+            for ep_key in seen_eps:
+                if self._stopped:
+                    break
+                ep_configs = groups[ep_key]
 
-                def _prog(d: int, t: int, m: str, off: int = _offset) -> None:
-                    self.progress_updated.emit(off + d, total_steps, m)
+                if ep_key == "auto":
+                    _offset = global_done
 
-                run_benchmark_core(
-                    ep_configs,
-                    on_progress=_prog,
-                    on_result=self.result_ready.emit,
-                    on_error=self.error.emit,
-                    is_stopped=lambda: self._stopped,
-                )
-                global_done += sum(c.warmup + c.iterations for c in ep_configs)
-            else:
-                global_done = self._run_ep_subprocess(ep_key, ep_configs, total_steps, global_done)
+                    def _prog(d: int, t: int, m: str, off: int = _offset) -> None:
+                        self.progress_updated.emit(off + d, total_steps, m)
 
-        self.finished.emit()
+                    run_benchmark_core(
+                        ep_configs,
+                        on_progress=_prog,
+                        on_result=self.result_ready.emit,
+                        on_error=self.error.emit,
+                        is_stopped=lambda: self._stopped,
+                    )
+                    global_done += sum(c.warmup + c.iterations for c in ep_configs)
+                else:
+                    global_done = self._run_ep_subprocess(ep_key, ep_configs, total_steps, global_done)
+
+            self.finished.emit()

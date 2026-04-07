@@ -12,6 +12,8 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtGui import QImage, QPixmap
 
+from ui import theme
+
 
 class _IndexWorker(QThread):
     progress = Signal(int, int)
@@ -86,7 +88,7 @@ class SimilaritySearch(QWidget):
         desc = QLabel("이미지 폴더를 인덱싱한 후, 쿼리 이미지와 유사한 이미지를 검색합니다.\n"
                        "• 더블클릭: 이미지 미리보기  • 우클릭: 파일 경로 복사")
         desc.setWordWrap(True)
-        desc.setStyleSheet("color: gray; font-size: 11px; margin-bottom: 4px;")
+        desc.setStyleSheet(theme.description_style())
         root.addWidget(desc)
 
         top = QHBoxLayout()
