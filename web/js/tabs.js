@@ -839,7 +839,7 @@ Tabs.benchmark = {
             <button class="btn btn-danger btn-sm" id="bench-stop" disabled onclick="Tabs.benchmark.stop()">${t('stop')}</button>
           </div>
           <div style="margin-top:0.75rem;">
-            <div class="progress-track"><div class="progress-fill" id="bench-progress" style="width:0%"></div></div>
+            <div class="progress-track" style="height:20px;position:relative;"><div class="progress-fill" id="bench-progress" style="width:0%;height:100%;"></div><span id="bench-progress-text" style="position:absolute;top:0;left:50%;transform:translateX(-50%);font-size:11px;line-height:20px;color:#fff;text-shadow:0 0 3px rgba(0,0,0,0.8);">0%</span></div>
             <span class="text-secondary" id="bench-status" style="margin-top:0.25rem;display:block;">${t('ready')}</span>
           </div>
         </div>
@@ -863,6 +863,7 @@ Tabs.benchmark = {
     document.getElementById('bench-stop').disabled = false;
     document.getElementById('bench-status').textContent = t('bench.running');
     document.getElementById('bench-progress').style.width = '0%';
+    const _bpt0 = document.getElementById('bench-progress-text'); if (_bpt0) _bpt0.textContent = '0%';
     App.setStatus(t('bench.running'));
     try {
       const r = await API.post('/api/benchmark/run', {
@@ -882,6 +883,7 @@ Tabs.benchmark = {
       const s = await API.get('/api/benchmark/status');
       const pct = s.total > 0 ? Math.round(s.progress / s.total * 100) : 0;
       document.getElementById('bench-progress').style.width = pct + '%';
+      const _bpt = document.getElementById('bench-progress-text'); if (_bpt) _bpt.textContent = pct + '%';
       document.getElementById('bench-status').textContent = s.msg || '';
       if (s.results && s.results.length) {
         const tb = document.getElementById('bench-results');
@@ -899,6 +901,7 @@ Tabs.benchmark = {
         document.getElementById('bench-run').disabled = false;
         document.getElementById('bench-stop').disabled = true;
         document.getElementById('bench-progress').style.width = '100%';
+        const _bpt2 = document.getElementById('bench-progress-text'); if (_bpt2) _bpt2.textContent = '100%';
         App.setStatus(t('bench.complete'));
       }
     } catch(e) { setTimeout(() => this._poll(), 1000); }
@@ -953,7 +956,7 @@ Tabs.evaluation = {
             <button class="btn btn-secondary btn-sm" onclick="Tabs.evaluation.exportCSV()">${t('eval.csv_export')}</button>
           </div>
           <div style="margin-top:0.5rem;">
-            <div class="progress-track"><div class="progress-fill" id="eval-prog" style="width:0%"></div></div>
+            <div class="progress-track" style="height:20px;position:relative;"><div class="progress-fill" id="eval-prog" style="width:0%;height:100%;"></div><span id="eval-prog-text" style="position:absolute;top:0;left:50%;transform:translateX(-50%);font-size:11px;line-height:20px;color:#fff;text-shadow:0 0 3px rgba(0,0,0,0.8);">0%</span></div>
             <span class="text-secondary" id="eval-status" style="margin-top:0.25rem;display:block;">${t('ready')}</span>
           </div>
         </div>
@@ -1046,6 +1049,7 @@ Tabs.evaluation = {
       document.getElementById('eval-stop-btn').disabled = false;
       document.getElementById('eval-status').textContent = t('eval.running');
       document.getElementById('eval-prog').style.width = '0%';
+      const _ept0 = document.getElementById('eval-prog-text'); if (_ept0) _ept0.textContent = '0%';
 
       const r = await API.post('/api/evaluation/run-async', {
         models, img_dir: imgDir, label_dir: lblDir, conf,
@@ -1293,6 +1297,7 @@ Tabs.evaluation = {
       const s = await API.get('/api/evaluation/status');
       const pct = s.total > 0 ? Math.round(s.progress / s.total * 100) : 0;
       document.getElementById('eval-prog').style.width = pct + '%';
+      const _ept = document.getElementById('eval-prog-text'); if (_ept) _ept.textContent = pct + '%';
       document.getElementById('eval-status').textContent = s.msg || '';
       if (s.results && s.results.length) {
         this._lastResults = s.results;
@@ -1304,6 +1309,7 @@ Tabs.evaluation = {
         document.getElementById('eval-run-btn').disabled = false;
         document.getElementById('eval-stop-btn').disabled = true;
         document.getElementById('eval-prog').style.width = '100%';
+        const _ept2 = document.getElementById('eval-prog-text'); if (_ept2) _ept2.textContent = '100%';
         // 캐시 저장
         this._cachedHTML = document.getElementById('page-body').innerHTML;
         App.setStatus(t('eval.complete'));
@@ -1431,6 +1437,7 @@ Tabs.explorer = {
                 <option value="chart_image">${t('explorer.view_chart_image')}</option>
                 <option value="size_dist">${t('explorer.view_size_dist')}</option>
                 <option value="aspect_dist">${t('explorer.view_aspect_dist')}</option>
+                <option value="box_aspect_dist">${t('explorer.view_box_aspect_dist')}</option>
               </select>
               <div class="text-label" style="margin-bottom:0.5rem;">${t('explorer.filter')}</div>
               <div class="form-group" style="margin-bottom:0.5rem;">
@@ -1576,7 +1583,10 @@ Tabs.explorer = {
       this._renderSizeChart(gallery);
     } else if (mode === 'aspect_dist') {
       gallery.style.display = 'block';
-      this._renderAspectChart(gallery);
+      this._renderAspectChart(gallery, this._data.aspect_ratios || [], 'Image Aspect Ratio Distribution (W/H)', 'Total images');
+    } else if (mode === 'box_aspect_dist') {
+      gallery.style.display = 'block';
+      this._renderAspectChart(gallery, this._data.box_aspect_ratios || [], 'Box Aspect Ratio Distribution (W/H)', 'Total boxes');
     }
   },
   _renderBarChart(container, counts, title) {
@@ -1631,8 +1641,7 @@ Tabs.explorer = {
         </div>`;
       }).join('')}</div>`;
   },
-  _renderAspectChart(container) {
-    const ratios = this._data.aspect_ratios || [];
+  _renderAspectChart(container, ratios, title, totalLabel) {
     if (!ratios.length) { container.innerHTML = '<div class="text-secondary" style="text-align:center;padding:2rem;">No data</div>'; return; }
     const buckets = {'Portrait (<0.5)': 0, 'Tall (0.5~0.8)': 0, 'Square (0.8~1.2)': 0, 'Wide (1.2~1.8)': 0, 'Ultra-wide (>1.8)': 0};
     const bcolors = ['#a78bfa','#4a9eff','#4ade80','#f59e0b','#ef4444'];
@@ -1646,8 +1655,8 @@ Tabs.explorer = {
     const maxVal = Math.max(...Object.values(buckets), 1);
     const total = ratios.length;
     container.innerHTML = `<div class="card-flat" style="padding:1.25rem;">
-      <div class="text-label" style="margin-bottom:0.5rem;">Aspect Ratio Distribution (W/H)</div>
-      <div class="text-secondary" style="font-size:11px;margin-bottom:1rem;">Total images: ${total}</div>
+      <div class="text-label" style="margin-bottom:0.5rem;">${title}</div>
+      <div class="text-secondary" style="font-size:11px;margin-bottom:1rem;">${totalLabel}: ${total}</div>
       ${Object.entries(buckets).map(([label, cnt], i) => {
         const pct = cnt / maxVal * 100;
         const ratio = total > 0 ? (cnt / total * 100).toFixed(1) : 0;

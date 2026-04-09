@@ -36,7 +36,7 @@ function makeTab(opts) {
       const onclick = opts.onclick ? ` onclick="${opts.onclick}"` : ` onclick="App.setStatus('Running...')"`;
       html += `<button class="btn btn-primary" style="margin-top:1rem;"${onclick}>${action}</button></div>`;
       if (opts.progress) {
-        html += `<div><div class="progress-track"><div class="progress-fill" id="${opts.id}-prog" style="width:0%"></div></div>
+        html += `<div><div class="progress-track" style="height:20px;position:relative;"><div class="progress-fill" id="${opts.id}-prog" style="width:0%;height:100%;"></div><span id="${opts.id}-prog-text" style="position:absolute;top:0;left:50%;transform:translateX(-50%);font-size:11px;line-height:20px;color:#fff;text-shadow:0 0 3px rgba(0,0,0,0.8);">0%</span></div>
           <span class="text-secondary" style="margin-top:0.25rem;display:block;">${t('ready')}</span></div>`;
       }
       if (opts.resultCols) {
@@ -95,7 +95,7 @@ Tabs['model-compare'] = {
             <button class="btn btn-primary" onclick="Tabs['model-compare'].run()">${t('run')}</button>
             <button class="btn btn-danger btn-sm" id="cmp-stop" disabled onclick="API.post('/api/force-stop/compare',{});Tabs['model-compare']._polling=false">${t('stop')}</button>
           </div>
-          <div style="margin-top:0.5rem;"><div class="progress-track"><div class="progress-fill" id="cmp-prog" style="width:0%"></div></div>
+          <div style="margin-top:0.5rem;"><div class="progress-track" style="height:20px;position:relative;"><div class="progress-fill" id="cmp-prog" style="width:0%;height:100%;"></div><span id="cmp-prog-text" style="position:absolute;top:0;left:50%;transform:translateX(-50%);font-size:11px;line-height:20px;color:#fff;text-shadow:0 0 3px rgba(0,0,0,0.8);">0%</span></div>
             <span class="text-secondary" id="cmp-status" style="margin-top:0.25rem;display:block;">${t('ready')}</span></div>
         </div>
         <div class="card" style="padding:1rem;">
@@ -132,12 +132,13 @@ Tabs['model-compare'] = {
     try {
       const s = await API.get('/api/analysis/model-compare/status');
       const pct = s.total>0 ? Math.round(s.progress/s.total*100) : 0;
-      document.getElementById('cmp-prog').style.width = pct+'%';
+      const _p = document.getElementById('cmp-prog'); if (_p) _p.style.width = pct+'%';
+      const _pt = document.getElementById('cmp-prog-text'); if (_pt) _pt.textContent = pct+'%';
       document.getElementById('cmp-status').textContent = s.msg||'';
       if (!s.running) {
         this._polling = false;
         document.getElementById('cmp-stop').disabled = true;
-        document.getElementById('cmp-prog').style.width = '100%';
+        if (_p) _p.style.width = '100%'; if (_pt) _pt.textContent = '100%';
         if (s.results) { this._results = s.results; this._idx = 0; const sl = document.getElementById('cmp-slider'); sl.max = s.results.length-1; sl.disabled = false; this._showAt(0); }
         App.setStatus(t('cmp.complete'));
       } else setTimeout(()=>this._poll(), 500);
@@ -182,7 +183,7 @@ Tabs['error-analyzer'] = {
             <button class="btn btn-primary" onclick="Tabs['error-analyzer'].run()">${t('run')}</button>
             <button class="btn btn-danger btn-sm" id="ea-stop" disabled onclick="API.post('/api/force-stop/error_analysis',{});Tabs['error-analyzer']._polling=false">${t('stop')}</button>
           </div>
-          <div style="margin-top:0.5rem;"><div class="progress-track"><div class="progress-fill" id="ea-prog" style="width:0%"></div></div>
+          <div style="margin-top:0.5rem;"><div class="progress-track" style="height:20px;position:relative;"><div class="progress-fill" id="ea-prog" style="width:0%;height:100%;"></div><span id="ea-prog-text" style="position:absolute;top:0;left:50%;transform:translateX(-50%);font-size:11px;line-height:20px;color:#fff;text-shadow:0 0 3px rgba(0,0,0,0.8);">0%</span></div>
             <span class="text-secondary" id="ea-status" style="margin-top:0.25rem;display:block;">${t('ready')}</span></div>
         </div>
         <div class="card" style="padding:1.5rem;">
@@ -216,11 +217,13 @@ Tabs['error-analyzer'] = {
       const s = await API.get('/api/analysis/error-analysis/status');
       const pct = s.total>0 ? Math.round(s.progress/s.total*100) : 0;
       document.getElementById('ea-prog').style.width = pct+'%';
+      const _pt_ea_prog = document.getElementById('ea-prog-text'); if (_pt_ea_prog) _pt_ea_prog.textContent = pct+'%';
       document.getElementById('ea-status').textContent = s.msg||'';
       if (!s.running) {
         this._polling = false;
         document.getElementById('ea-stop').disabled = true;
         document.getElementById('ea-prog').style.width = '100%';
+        const _pt100_ea_prog = document.getElementById('ea-prog-text'); if (_pt100_ea_prog) _pt100_ea_prog.textContent = '100%';
         if (s.results && (s.results.fp || s.results.fn)) {
           const fp = s.results.fp || {};
           const fn = s.results.fn || {};
@@ -253,7 +256,7 @@ Tabs['conf-optimizer'] = {
             <button class="btn btn-primary" onclick="Tabs['conf-optimizer'].run()">${t('run')}</button>
             <button class="btn btn-danger btn-sm" id="co-stop" disabled onclick="API.post('/api/force-stop/conf_opt',{});Tabs['conf-optimizer']._polling=false">${t('stop')}</button>
           </div>
-          <div style="margin-top:0.5rem;"><div class="progress-track"><div class="progress-fill" id="co-prog" style="width:0%"></div></div>
+          <div style="margin-top:0.5rem;"><div class="progress-track" style="height:20px;position:relative;"><div class="progress-fill" id="co-prog" style="width:0%;height:100%;"></div><span id="co-prog-text" style="position:absolute;top:0;left:50%;transform:translateX(-50%);font-size:11px;line-height:20px;color:#fff;text-shadow:0 0 3px rgba(0,0,0,0.8);">0%</span></div>
             <span class="text-secondary" id="co-status" style="margin-top:0.25rem;display:block;">${t('ready')}</span></div>
         </div>
         <div class="card" style="padding:1.5rem;">
@@ -287,11 +290,13 @@ Tabs['conf-optimizer'] = {
       const s = await API.get('/api/analysis/conf-optimizer/status');
       const pct = s.total>0 ? Math.round(s.progress/s.total*100) : 0;
       document.getElementById('co-prog').style.width = pct+'%';
+      const _pt_co_prog = document.getElementById('co-prog-text'); if (_pt_co_prog) _pt_co_prog.textContent = pct+'%';
       document.getElementById('co-status').textContent = s.msg||'';
       if (!s.running) {
         this._polling = false;
         document.getElementById('co-stop').disabled = true;
         document.getElementById('co-prog').style.width = '100%';
+        const _pt100_co_prog = document.getElementById('co-prog-text'); if (_pt100_co_prog) _pt100_co_prog.textContent = '100%';
         if (s.results) {
           this._results = s.results;
           document.getElementById('co-results').innerHTML = s.results.map((r, i) =>
@@ -355,7 +360,7 @@ Tabs['embedding-viewer'] = {
         <div class="card" style="padding:1.5rem;">
           <h3 class="text-heading-h3" style="margin-bottom:1rem;display:flex;align-items:center;">${t('ev.title')}</h3>
           ${modelInput('ev-model')}
-          <div class="text-secondary" style="font-size:10px;margin-top:-0.5rem;margin-bottom:0.5rem;">${t('ev.model_hint')}</div>
+          <div class="text-secondary" style="font-size:10px;margin-top:0.25rem;margin-bottom:0.5rem;">${t('ev.model_hint')}</div>
           ${imgDirInput('ev-img')}
           <div class="form-group" style="margin-top:0.75rem;">
             <label class="form-label">${t('ev.method')}</label>
@@ -365,7 +370,7 @@ Tabs['embedding-viewer'] = {
             <button class="btn btn-primary" onclick="Tabs['embedding-viewer'].run()">${t('run')}</button>
             <button class="btn btn-danger btn-sm" id="ev-stop" disabled onclick="Tabs['embedding-viewer']._polling=false">${t('stop')}</button>
           </div>
-          <div style="margin-top:0.5rem;"><div class="progress-track"><div class="progress-fill" id="ev-prog" style="width:0%"></div></div>
+          <div style="margin-top:0.5rem;"><div class="progress-track" style="height:20px;position:relative;"><div class="progress-fill" id="ev-prog" style="width:0%;height:100%;"></div><span id="ev-prog-text" style="position:absolute;top:0;left:50%;transform:translateX(-50%);font-size:11px;line-height:20px;color:#fff;text-shadow:0 0 3px rgba(0,0,0,0.8);">0%</span></div>
             <span class="text-secondary" id="ev-status" style="margin-top:0.25rem;display:block;">${t('ready')}</span></div>
         </div>
         <div class="card" style="padding:1.5rem;min-height:400px;display:flex;align-items:center;justify-content:center;" id="ev-plot">
@@ -395,11 +400,13 @@ Tabs['embedding-viewer'] = {
       const s = await API.get('/api/analysis/embedding-viewer/status');
       const pct = s.total>0 ? Math.round(s.progress/s.total*100) : 0;
       document.getElementById('ev-prog').style.width = pct+'%';
+      const _pt_ev_prog = document.getElementById('ev-prog-text'); if (_pt_ev_prog) _pt_ev_prog.textContent = pct+'%';
       document.getElementById('ev-status').textContent = s.msg||'';
       if (!s.running) {
         this._polling = false;
         document.getElementById('ev-stop').disabled = true;
         document.getElementById('ev-prog').style.width = '100%';
+        const _pt100_ev_prog = document.getElementById('ev-prog-text'); if (_pt100_ev_prog) _pt100_ev_prog.textContent = '100%';
         if (s.image) document.getElementById('ev-plot').innerHTML = `<img src="data:image/png;base64,${s.image}" style="max-width:100%;max-height:600px;">`;
         App.setStatus(t('ev.complete'));
       } else setTimeout(()=>this._poll(), 500);
@@ -422,7 +429,7 @@ Tabs.segmentation = {
           <button class="btn btn-secondary btn-sm" style="margin-top:1rem;margin-left:0.5rem;" onclick="Tabs.segmentation._showDetail()">${t('seg.detail')}</button>
         </div>
         <div>
-          <div class="progress-track"><div class="progress-fill" id="seg-prog" style="width:0%"></div></div>
+          <div class="progress-track" style="height:20px;position:relative;"><div class="progress-fill" id="seg-prog" style="width:0%;height:100%;"></div><span id="seg-prog-text" style="position:absolute;top:0;left:50%;transform:translateX(-50%);font-size:11px;line-height:20px;color:#fff;text-shadow:0 0 3px rgba(0,0,0,0.8);">0%</span></div>
           <span class="text-secondary" style="margin-top:0.25rem;display:block;" id="seg-msg">${t('ready')}</span>
         </div>
         <div class="card" style="padding:1.5rem;">
@@ -450,12 +457,8 @@ Tabs.segmentation = {
       const progEl = document.getElementById('seg-prog');
       const msgEl = document.getElementById('seg-msg');
       if (progEl) progEl.style.width = prog + '%';
+      const segPt = document.getElementById('seg-prog-text'); if (segPt) segPt.textContent = prog + '%';
       if (msgEl) msgEl.textContent = s.msg || `${s.progress}/${s.total}`;
-      if (s.results && s.results.length) {
-        document.getElementById('seg-results').innerHTML = s.results.map(r =>
-          `<tr><td>${r.class_name}</td><td>${r.iou}</td><td>${r.dice}</td><td>${r.images}</td></tr>`
-        ).join('');
-      }
       if (s.running) setTimeout(() => this._poll(), 500);
       else App.setStatus(s.msg || 'Complete');
     } catch(e) { App.setStatus('Error: ' + e.message, e.stack); }
@@ -532,7 +535,7 @@ Tabs.clip = {
           <button class="btn btn-primary" style="margin-top:1rem;" id="clip-run-btn" onclick="Tabs.clip.run()">${t('run')}</button>
         </div>
         <div>
-          <div class="progress-track"><div class="progress-fill" id="clip-prog" style="width:0%"></div></div>
+          <div class="progress-track" style="height:20px;position:relative;"><div class="progress-fill" id="clip-prog" style="width:0%;height:100%;"></div><span id="clip-prog-text" style="position:absolute;top:0;left:50%;transform:translateX(-50%);font-size:11px;line-height:20px;color:#fff;text-shadow:0 0 3px rgba(0,0,0,0.8);">0%</span></div>
           <span class="text-secondary" style="margin-top:0.25rem;display:block;" id="clip-msg">${t('ready')}</span>
         </div>
         <div class="card" style="padding:1.5rem;">
@@ -565,6 +568,7 @@ Tabs.clip = {
       const progEl = document.getElementById('clip-prog');
       const msgEl = document.getElementById('clip-msg');
       if (progEl) progEl.style.width = prog + '%';
+      const clipPt = document.getElementById('clip-prog-text'); if (clipPt) clipPt.textContent = prog + '%';
       if (msgEl) msgEl.textContent = s.msg || `${s.progress}/${s.total}`;
       if (s.results && s.results.length) {
         const tbody = document.getElementById('clip-results');
@@ -619,7 +623,7 @@ Tabs.embedder = {
           <button class="btn btn-secondary btn-sm" style="margin-top:1rem;margin-left:0.5rem;" onclick="Tabs.embedder._compareImages()">${t('emb.compare_btn')}</button>
         </div>
         <div>
-          <div class="progress-track"><div class="progress-fill" id="emb-prog" style="width:0%"></div></div>
+          <div class="progress-track" style="height:20px;position:relative;"><div class="progress-fill" id="emb-prog" style="width:0%;height:100%;"></div><span id="emb-prog-text" style="position:absolute;top:0;left:50%;transform:translateX(-50%);font-size:11px;line-height:20px;color:#fff;text-shadow:0 0 3px rgba(0,0,0,0.8);">0%</span></div>
           <span class="text-secondary" style="margin-top:0.25rem;display:block;" id="emb-msg">${t('ready')}</span>
         </div>
         <div class="card" style="padding:1.5rem;">
@@ -649,6 +653,7 @@ Tabs.embedder = {
       const progEl = document.getElementById('emb-prog');
       const msgEl = document.getElementById('emb-msg');
       if (progEl) progEl.style.width = prog + '%';
+      const embPt = document.getElementById('emb-prog-text'); if (embPt) embPt.textContent = prog + '%';
       if (msgEl) msgEl.textContent = s.msg || `${s.progress}/${s.total}`;
       if (s.results && s.results.length) {
         const tbody = document.getElementById('emb-results');
@@ -736,7 +741,7 @@ Tabs.converter = {
             <select class="form-input input-normal" id="conv-to"><option>COCO JSON</option><option>YOLO</option><option>Pascal VOC</option></select>
           </div>
           <button class="btn btn-primary" style="margin-top:1rem;" onclick="Tabs.converter.run()">${t('run')}</button>
-          <div style="margin-top:0.5rem;"><div class="progress-track"><div class="progress-fill" id="conv-prog" style="width:0%"></div></div>
+          <div style="margin-top:0.5rem;"><div class="progress-track" style="height:20px;position:relative;"><div class="progress-fill" id="conv-prog" style="width:0%;height:100%;"></div><span id="conv-prog-text" style="position:absolute;top:0;left:50%;transform:translateX(-50%);font-size:11px;line-height:20px;color:#fff;text-shadow:0 0 3px rgba(0,0,0,0.8);">0%</span></div>
             <span class="text-secondary" id="conv-msg" style="margin-top:0.25rem;display:block;">${t('ready')}</span></div>
         </div>
       </div>`;
@@ -762,6 +767,7 @@ Tabs.converter = {
       const p = document.getElementById('conv-prog');
       const m = document.getElementById('conv-msg');
       if (p) p.style.width = pct + '%';
+      const convPt = document.getElementById('conv-prog-text'); if (convPt) convPt.textContent = pct + '%';
       if (m) m.textContent = s.msg || `${s.progress}/${s.total}`;
       if (s.running) setTimeout(() => this._poll(), 500);
       else App.setStatus(s.msg + (s.results ? ` — ${JSON.stringify(s.results)}` : ''));
@@ -786,6 +792,12 @@ Tabs.remapper = {
           <label style="display:flex;align-items:center;gap:0.5rem;margin-top:0.5rem;cursor:pointer;color:var(--text-04);"><input type="checkbox" checked id="remap-reindex"> ${t('remap.auto_reindex')}</label>
           <label style="display:flex;align-items:center;gap:0.5rem;margin-top:0.5rem;cursor:pointer;color:var(--text-04);"><input type="checkbox" id="remap-recursive"> ${t('common.recursive')}</label>
           <button class="btn btn-primary" style="margin-top:1rem;" onclick="Tabs.remapper.run()">${t('remap.apply')}</button>
+          <div id="remap-pbar-wrap" style="display:none;margin-top:0.75rem;">
+            <div class="progress-track" style="height:20px;position:relative;">
+              <div class="progress-fill" id="remap-pbar" style="width:0%;height:100%;"></div>
+              <span id="remap-pbar-text" style="position:absolute;top:0;left:50%;transform:translateX(-50%);font-size:11px;line-height:20px;color:#fff;text-shadow:0 0 3px rgba(0,0,0,0.8);">0%</span>
+            </div>
+          </div>
         </div>
       </div>`;
   },
@@ -796,11 +808,25 @@ Tabs.remapper = {
     const mapStr = document.getElementById('remap-map')?.value || '';
     const mapping = {};
     mapStr.split(',').forEach(p => { const [a,b] = p.trim().split(':'); if (a && b) mapping[a.trim()] = b.trim(); });
+    const w = document.getElementById('remap-pbar-wrap'); if (w) w.style.display = 'block';
     try {
       const r = await API.post('/api/data/remapper', { label_dir, output_dir, mapping, auto_reindex: document.getElementById('remap-reindex')?.checked, recursive: document.getElementById('remap-recursive')?.checked });
-      if (r.error) App.setStatus('Error: ' + r.error);
-      else App.setStatus(`Remap complete — ${r.files} files, ${r.labels} labels`);
+      if (r.error) { App.setStatus('Error: ' + r.error); if (w) w.style.display = 'none'; return; }
+      this._poll();
     } catch(e) { App.setStatus('Error: ' + e.message, e.stack); }
+  },
+  async _poll() {
+    try {
+      const s = await API.get('/api/data/remapper/status');
+      const pct = s.total > 0 ? Math.round(s.progress / s.total * 100) : 0;
+      const p = document.getElementById('remap-pbar'); if (p) p.style.width = pct + '%';
+      const pt = document.getElementById('remap-pbar-text'); if (pt) pt.textContent = pct + '%';
+      if (s.running) { setTimeout(() => this._poll(), 300); return; }
+      if (p) p.style.width = '100%'; if (pt) pt.textContent = '100%';
+      if (s.results) App.setStatus(`Remap complete — ${s.results.files} files, ${s.results.labels} labels`);
+      else App.setStatus(s.msg || 'Complete');
+      setTimeout(() => { const w = document.getElementById('remap-pbar-wrap'); if (w) w.style.display = 'none'; }, 1000);
+    } catch(e) { setTimeout(() => this._poll(), 500); }
   }
 };
 
@@ -824,6 +850,12 @@ Tabs.merger = {
           </div>
           <label style="display:flex;align-items:center;gap:0.5rem;margin-top:0.5rem;cursor:pointer;color:var(--text-04);"><input type="checkbox" id="merge-recursive"> ${t('common.recursive')}</label>
           <button class="btn btn-primary" style="margin-top:1rem;" onclick="Tabs.merger.run()">${t('merger.run')}</button>
+          <div id="merge-pbar-wrap" style="display:none;margin-top:0.75rem;">
+            <div class="progress-track" style="height:20px;position:relative;">
+              <div class="progress-fill" id="merge-pbar" style="width:0%;height:100%;"></div>
+              <span id="merge-pbar-text" style="position:absolute;top:0;left:50%;transform:translateX(-50%);font-size:11px;line-height:20px;color:#fff;text-shadow:0 0 3px rgba(0,0,0,0.8);">0%</span>
+            </div>
+          </div>
         </div>
       </div>`;
   },
@@ -842,19 +874,25 @@ Tabs.merger = {
     }
     const output_dir = document.getElementById('merge-out')?.value;
     if (!datasets.length || !output_dir) { App.setStatus(t('common.select_dirs')); return; }
+    const w = document.getElementById('merge-pbar-wrap'); if (w) w.style.display = 'block';
     try {
       const r = await API.post('/api/data/merger', { datasets, output_dir, dhash_threshold: +(document.getElementById('merge-dhash')?.value || 10), recursive: document.getElementById('merge-recursive')?.checked });
-      if (r.error) { App.setStatus('Error: ' + r.error); return; }
+      if (r.error) { App.setStatus('Error: ' + r.error); if (w) w.style.display = 'none'; return; }
       this._poll();
     } catch(e) { App.setStatus('Error: ' + e.message, e.stack); }
   },
   async _poll() {
     try {
       const s = await API.get('/api/data/merger/status');
-      if (s.running) { setTimeout(() => this._poll(), 500); return; }
+      const pct = s.total > 0 ? Math.round(s.progress / s.total * 100) : 0;
+      const p = document.getElementById('merge-pbar'); if (p) p.style.width = pct + '%';
+      const pt = document.getElementById('merge-pbar-text'); if (pt) pt.textContent = pct + '%';
+      if (s.running) { setTimeout(() => this._poll(), 300); return; }
+      if (p) p.style.width = '100%'; if (pt) pt.textContent = '100%';
       if (s.results) App.setStatus(`Merge complete — ${s.results.copied} copied, ${s.results.duplicates} duplicates skipped`);
       else App.setStatus(s.msg || 'Complete');
-    } catch(e) {}
+      setTimeout(() => { const w = document.getElementById('merge-pbar-wrap'); if (w) w.style.display = 'none'; }, 1000);
+    } catch(e) { setTimeout(() => this._poll(), 500); }
   }
 };
 
@@ -874,12 +912,25 @@ Tabs.sampler = {
         <label style="display:flex;align-items:center;gap:0.5rem;margin-top:0.5rem;cursor:pointer;color:var(--text-04);"><input type="checkbox" checked id="samp-lbl-chk"> ${t('sampler.include_lbl')}</label>
         <label style="display:flex;align-items:center;gap:0.5rem;margin-top:0.5rem;cursor:pointer;color:var(--text-04);"><input type="checkbox" id="samp-recursive"> ${t('common.recursive')}</label>
         <button class="btn btn-primary" style="margin-top:1rem;" onclick="Tabs.sampler.run()">${t('run')}</button>
+        <div id="samp-pbar-wrap" style="display:none;margin-top:0.75rem;">
+          <div class="progress-track" style="height:20px;position:relative;">
+            <div class="progress-fill" id="samp-pbar" style="width:0%;height:100%;"></div>
+            <span id="samp-pbar-text" style="position:absolute;top:0;left:50%;transform:translateX(-50%);font-size:11px;line-height:20px;color:#fff;text-shadow:0 0 3px rgba(0,0,0,0.8);">0%</span>
+          </div>
+        </div>
+      </div>
+      <div class="card" style="padding:1.5rem;display:none;" id="samp-result-card">
+        <div class="table-container"><table><thead><tr><th>Class</th><th>Before</th><th>After</th></tr></thead>
+        <tbody id="samp-results"></tbody></table></div>
+        <div class="text-secondary" style="margin-top:0.5rem;" id="samp-summary"></div>
       </div></div>`;
   },
   async run() {
     const img_dir = document.getElementById('samp-img')?.value || G.imgDir;
     const output_dir = document.getElementById('samp-out')?.value;
     if (!img_dir || !output_dir) { App.setStatus(t('common.select_dirs')); return; }
+    const w = document.getElementById('samp-pbar-wrap'); if (w) w.style.display = 'block';
+    const rc = document.getElementById('samp-result-card'); if (rc) rc.style.display = 'none';
     try {
       const r = await API.post('/api/data/sampler', {
         img_dir, label_dir: document.getElementById('samp-lbl')?.value || G.lblDir, output_dir,
@@ -889,17 +940,29 @@ Tabs.sampler = {
         include_labels: document.getElementById('samp-lbl-chk')?.checked,
         recursive: document.getElementById('samp-recursive')?.checked
       });
-      if (r.error) { App.setStatus('Error: ' + r.error); return; }
+      if (r.error) { App.setStatus('Error: ' + r.error); if (w) w.style.display = 'none'; return; }
       this._poll();
     } catch(e) { App.setStatus('Error: ' + e.message, e.stack); }
   },
   async _poll() {
     try {
       const s = await API.get('/api/data/sampler/status');
-      if (s.running) { setTimeout(() => this._poll(), 500); return; }
-      if (s.results) App.setStatus(`Sampled ${s.results.sampled} from ${s.results.total} images`);
-      else App.setStatus(s.msg || 'Complete');
-    } catch(e) {}
+      const pct = s.total > 0 ? Math.round(s.progress / s.total * 100) : 0;
+      const p = document.getElementById('samp-pbar'); if (p) p.style.width = pct + '%';
+      const pt = document.getElementById('samp-pbar-text'); if (pt) pt.textContent = pct + '%';
+      if (s.running) { setTimeout(() => this._poll(), 300); return; }
+      if (p) p.style.width = '100%'; if (pt) pt.textContent = '100%';
+      if (s.results) {
+        App.setStatus(`Sampled ${s.results.sampled} from ${s.results.total} images`);
+        const before = s.results.before || {}, after = s.results.after || {};
+        const classes = [...new Set([...Object.keys(before), ...Object.keys(after)])].sort((a,b)=>a-b);
+        const tb = document.getElementById('samp-results');
+        if (tb) tb.innerHTML = classes.map(c => `<tr><td>${c}</td><td>${before[c]||0}</td><td>${after[c]||0}</td></tr>`).join('');
+        const sm = document.getElementById('samp-summary'); if (sm) sm.textContent = `Sampled ${s.results.sampled} images`;
+        const rc = document.getElementById('samp-result-card'); if (rc) rc.style.display = 'block';
+      } else App.setStatus(s.msg || 'Complete');
+      setTimeout(() => { const w = document.getElementById('samp-pbar-wrap'); if (w) w.style.display = 'none'; }, 1000);
+    } catch(e) { setTimeout(() => this._poll(), 500); }
   }
 };
 
@@ -913,7 +976,7 @@ Tabs.anomaly = {
         ${imgDirInput('anom-img')} ${lblDirInput('anom-lbl')}
         <label style="display:flex;align-items:center;gap:0.5rem;margin-top:0.5rem;cursor:pointer;color:var(--text-04);"><input type="checkbox" id="anom-recursive"> ${t('common.recursive')}</label>
         <button class="btn btn-primary" style="margin-top:1rem;" onclick="Tabs.anomaly.run()">${t('run')}</button>
-        <div style="margin-top:0.5rem;"><div class="progress-track"><div class="progress-fill" id="anom-prog" style="width:0%"></div></div>
+        <div style="margin-top:0.5rem;"><div class="progress-track" style="height:20px;position:relative;"><div class="progress-fill" id="anom-prog" style="width:0%;height:100%;"></div><span id="anom-prog-text" style="position:absolute;top:0;left:50%;transform:translateX(-50%);font-size:11px;line-height:20px;color:#fff;text-shadow:0 0 3px rgba(0,0,0,0.8);">0%</span></div>
           <span class="text-secondary" id="anom-msg" style="margin-top:0.25rem;display:block;">${t('ready')}</span></div>
       </div>
       <div class="card" style="padding:1.5rem;"><div class="table-container"><table><thead><tr><th>File</th><th>Type</th><th>Details</th><th>Severity</th></tr></thead>
@@ -934,6 +997,7 @@ Tabs.anomaly = {
       const s = await API.get('/api/quality/anomaly/status');
       const pct = s.total > 0 ? Math.round(s.progress / s.total * 100) : 0;
       const p = document.getElementById('anom-prog'); if (p) p.style.width = pct + '%';
+      const pt = document.getElementById('anom-prog-text'); if (pt) pt.textContent = pct + '%';
       const m = document.getElementById('anom-msg'); if (m) m.textContent = s.msg || '';
       if (!s.running && s.results) {
         document.getElementById('anom-results').innerHTML = s.results.length
@@ -955,7 +1019,7 @@ Tabs.quality = {
         ${imgDirInput('qual-img')}
         <label style="display:flex;align-items:center;gap:0.5rem;margin-top:0.5rem;cursor:pointer;color:var(--text-04);"><input type="checkbox" id="qual-recursive"> ${t('common.recursive')}</label>
         <button class="btn btn-primary" style="margin-top:1rem;" onclick="Tabs.quality.run()">${t('run')}</button>
-        <div style="margin-top:0.5rem;"><div class="progress-track"><div class="progress-fill" id="qual-prog" style="width:0%"></div></div>
+        <div style="margin-top:0.5rem;"><div class="progress-track" style="height:20px;position:relative;"><div class="progress-fill" id="qual-prog" style="width:0%;height:100%;"></div><span id="qual-prog-text" style="position:absolute;top:0;left:50%;transform:translateX(-50%);font-size:11px;line-height:20px;color:#fff;text-shadow:0 0 3px rgba(0,0,0,0.8);">0%</span></div>
           <span class="text-secondary" id="qual-msg" style="margin-top:0.25rem;display:block;">${t('ready')}</span></div>
       </div>
       <div class="card" style="padding:1.5rem;"><div class="table-container"><table><thead><tr><th>File</th><th>Blur</th><th>Brightness</th><th>Entropy</th><th>Aspect</th><th>Issues</th></tr></thead>
@@ -975,6 +1039,7 @@ Tabs.quality = {
       const s = await API.get('/api/quality/image-quality/status');
       const pct = s.total > 0 ? Math.round(s.progress / s.total * 100) : 0;
       const p = document.getElementById('qual-prog'); if (p) p.style.width = pct + '%';
+      const pt = document.getElementById('qual-prog-text'); if (pt) pt.textContent = pct + '%';
       const m = document.getElementById('qual-msg'); if (m) m.textContent = s.msg || '';
       if (!s.running && s.results) {
         document.getElementById('qual-results').innerHTML = s.results.map(r =>
@@ -996,7 +1061,7 @@ Tabs.duplicate = {
         <div class="form-group" style="margin-top:0.75rem;"><label class="form-label">${t('dup.hamming')}</label><input type="number" class="form-input input-normal" id="dup-thr" value="10" min="0" max="64"></div>
         <label style="display:flex;align-items:center;gap:0.5rem;margin-top:0.5rem;cursor:pointer;color:var(--text-04);"><input type="checkbox" id="dup-recursive"> ${t('common.recursive')}</label>
         <button class="btn btn-primary" style="margin-top:1rem;" onclick="Tabs.duplicate.run()">${t('run')}</button>
-        <div style="margin-top:0.5rem;"><div class="progress-track"><div class="progress-fill" id="dup-prog" style="width:0%"></div></div>
+        <div style="margin-top:0.5rem;"><div class="progress-track" style="height:20px;position:relative;"><div class="progress-fill" id="dup-prog" style="width:0%;height:100%;"></div><span id="dup-prog-text" style="position:absolute;top:0;left:50%;transform:translateX(-50%);font-size:11px;line-height:20px;color:#fff;text-shadow:0 0 3px rgba(0,0,0,0.8);">0%</span></div>
           <span class="text-secondary" id="dup-msg" style="margin-top:0.25rem;display:block;">${t('ready')}</span></div>
       </div>
       <div class="card" style="padding:1.5rem;"><div class="table-container"><table><thead><tr><th>Group</th><th>Image A</th><th>Image B</th><th>Distance</th></tr></thead>
@@ -1016,6 +1081,7 @@ Tabs.duplicate = {
       const s = await API.get('/api/quality/duplicate/status');
       const pct = s.total > 0 ? Math.round(s.progress / s.total * 100) : 0;
       const p = document.getElementById('dup-prog'); if (p) p.style.width = pct + '%';
+      const pt = document.getElementById('dup-prog-text'); if (pt) pt.textContent = pct + '%';
       const m = document.getElementById('dup-msg'); if (m) m.textContent = s.msg || '';
       if (!s.running && s.results) {
         document.getElementById('dup-results').innerHTML = s.results.length
@@ -1049,7 +1115,7 @@ Tabs.leaky = {
             <input type="number" class="form-input input-normal" value="10" min="0" max="64">
           </div>
           <button class="btn btn-primary" style="margin-top:1rem;" onclick="Tabs.leaky.run()">${t('run')}</button>
-          <div style="margin-top:0.5rem;"><div class="progress-track"><div class="progress-fill" id="leak-prog" style="width:0%"></div></div>
+          <div style="margin-top:0.5rem;"><div class="progress-track" style="height:20px;position:relative;"><div class="progress-fill" id="leak-prog" style="width:0%;height:100%;"></div><span id="leak-prog-text" style="position:absolute;top:0;left:50%;transform:translateX(-50%);font-size:11px;line-height:20px;color:#fff;text-shadow:0 0 3px rgba(0,0,0,0.8);">0%</span></div>
             <span class="text-secondary" id="leak-msg" style="margin-top:0.25rem;display:block;">${t('ready')}</span></div>
         </div>
         <div class="card" style="padding:1.5rem;">
@@ -1072,7 +1138,11 @@ Tabs.leaky = {
   async _poll() {
     try {
       const s = await API.get('/api/quality/leaky/status');
+      const pct = s.total > 0 ? Math.round(s.progress / s.total * 100) : 0;
+      const lp = document.getElementById('leak-prog'); if (lp) lp.style.width = pct + '%';
+      const lpt = document.getElementById('leak-prog-text'); if (lpt) lpt.textContent = pct + '%';
       if (!s.running && s.results) {
+        if (lp) lp.style.width = '100%'; if (lpt) lpt.textContent = '100%';
         document.getElementById('leak-results').innerHTML = s.results.length
           ? s.results.map(r => `<tr><td>${r.pair}</td><td>${r.duplicates}</td><td style="font-size:11px;">${r.files}</td></tr>`).join('')
           : '<tr><td colspan="3" class="text-secondary" style="text-align:center;">' + t('leaky.none') + '</td></tr>';
@@ -1094,7 +1164,7 @@ Tabs.similarity = {
           <div style="display:flex;gap:0.5rem;"><input type="text" class="form-input input-normal" style="flex:1;" readonly id="sim-query"><button class="btn btn-secondary btn-sm" onclick="pickFile('sim-query','Images (*.jpg *.png)')">${t('browse')}</button></div></div>
         <div class="form-group"><label class="form-label">${t('sim.topk')}</label><input type="number" class="form-input input-normal" id="sim-k" value="10" min="1" max="100"></div>
         <button class="btn btn-primary" style="margin-top:1rem;" onclick="Tabs.similarity.run()">${t('sim.build')}</button>
-        <div style="margin-top:0.5rem;"><div class="progress-track"><div class="progress-fill" id="sim-prog" style="width:0%"></div></div>
+        <div style="margin-top:0.5rem;"><div class="progress-track" style="height:20px;position:relative;"><div class="progress-fill" id="sim-prog" style="width:0%;height:100%;"></div><span id="sim-prog-text" style="position:absolute;top:0;left:50%;transform:translateX(-50%);font-size:11px;line-height:20px;color:#fff;text-shadow:0 0 3px rgba(0,0,0,0.8);">0%</span></div>
           <span class="text-secondary" id="sim-msg" style="margin-top:0.25rem;display:block;">${t('ready')}</span></div>
       </div>
       <div class="card" style="padding:1.5rem;"><div class="table-container"><table><thead><tr><th>Rank</th><th>Image</th><th>Distance</th></tr></thead>
@@ -1114,54 +1184,13 @@ Tabs.similarity = {
       const s = await API.get('/api/quality/similarity/status');
       const pct = s.total > 0 ? Math.round(s.progress / s.total * 100) : 0;
       const p = document.getElementById('sim-prog'); if (p) p.style.width = pct + '%';
+      const pt = document.getElementById('sim-prog-text'); if (pt) pt.textContent = pct + '%';
       const m = document.getElementById('sim-msg'); if (m) m.textContent = s.msg || '';
       if (!s.running && s.results) {
         document.getElementById('sim-results').innerHTML = s.results.map(r =>
           `<tr><td>${r.rank}</td><td>${r.image}</td><td>${r.distance}</td></tr>`).join('');
         App.setStatus(s.msg || 'Complete');
       } else if (s.running) setTimeout(() => this._poll(), 500);
-    } catch(e) {}
-  }
-};
-
-/* ── Batch Inference ────────────────────────────────── */
-Tabs.batch = {
-  title: true,
-  render() {
-    return `<div style="display:flex;flex-direction:column;gap:1.5rem;">
-      <div class="card" style="padding:1.5rem;">
-        <h3 class="text-heading-h3" style="margin-bottom:1rem;display:flex;align-items:center;">${t('batch.title')}</h3>
-        ${modelInput('bat-model')} ${imgDirInput('bat-img')} ${outDirInput('bat-out')}
-        <div class="form-group" style="margin-top:0.75rem;"><label class="form-label">${t('batch.format')}</label><select class="form-input input-normal" id="bat-fmt"><option>YOLO txt</option><option>JSON</option><option>CSV</option></select></div>
-        <label style="display:flex;align-items:center;gap:0.5rem;margin-top:0.5rem;cursor:pointer;color:var(--text-04);"><input type="checkbox" id="bat-vis"> ${t('batch.save_vis')}</label>
-        <button class="btn btn-primary" style="margin-top:1rem;" onclick="Tabs.batch.run()">${t('batch.run')}</button>
-        <div style="margin-top:0.5rem;"><div class="progress-track"><div class="progress-fill" id="bat-prog" style="width:0%"></div></div>
-          <span class="text-secondary" id="bat-msg" style="margin-top:0.25rem;display:block;">${t('ready')}</span></div>
-      </div></div>`;
-  },
-  async run() {
-    const model_path = document.getElementById('bat-model')?.value || G.model;
-    const img_dir = document.getElementById('bat-img')?.value || G.imgDir;
-    const output_dir = document.getElementById('bat-out')?.value;
-    if (!model_path || !img_dir || !output_dir) { App.setStatus(t('common.select_dirs')); return; }
-    try {
-      const r = await API.post('/api/batch/run', {
-        model_path, img_dir, output_dir,
-        output_format: document.getElementById('bat-fmt').value,
-        save_vis: document.getElementById('bat-vis')?.checked || false
-      });
-      if (r.error) { App.setStatus('Error: ' + r.error); return; }
-      this._poll();
-    } catch(e) { App.setStatus('Error: ' + e.message, e.stack); }
-  },
-  async _poll() {
-    try {
-      const s = await API.get('/api/batch/status');
-      const pct = s.total > 0 ? Math.round(s.progress / s.total * 100) : 0;
-      const p = document.getElementById('bat-prog'); if (p) p.style.width = pct + '%';
-      const m = document.getElementById('bat-msg'); if (m) m.textContent = s.msg || '';
-      if (s.running) setTimeout(() => this._poll(), 500);
-      else App.setStatus(s.msg || 'Complete');
     } catch(e) {}
   }
 };

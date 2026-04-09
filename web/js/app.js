@@ -7,9 +7,8 @@ const App = {
     ['sec.inference',  [['viewer','viewer'],['settings','settings']]],
     ['sec.evaluation', [['evaluation','evaluation'],['benchmark','benchmark'],['segmentation','segmentation'],['clip','clip'],['embedder','embedder']]],
     ['sec.analysis',   [['analysis','analysis'],['model-compare','compare'],['error-analyzer','errorAnalyzer'],['conf-optimizer','confOptimizer'],['embedding-viewer','embeddingViewer']]],
-    ['sec.data',       [['explorer','explorer'],['splitter','splitter'],['converter','converter'],['remapper','remapper'],['merger','merger'],['sampler','sampler']]],
+    ['sec.data',       [['explorer','explorer'],['splitter','splitter'],['converter','converter'],['remapper','remapper'],['merger','merger'],['sampler','sampler'],['augmentation','augmentation']]],
     ['sec.quality',    [['anomaly','anomaly'],['quality','quality'],['duplicate','duplicate'],['leaky','leaky'],['similarity','similarity']]],
-    ['sec.batch',      [['batch','batch'],['augmentation','augmentation']]],
   ],
 
   init() {

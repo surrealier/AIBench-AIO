@@ -2567,6 +2567,7 @@ async def data_explorer(req: dict):
             file_info = []
             box_sizes = []  # (w, h) normalized
             aspect_ratios = []
+            box_aspect_ratios = []
             for i, fp in enumerate(imgs[:5000]):
                 _explorer_state["progress"] = i + 1
                 stem = os.path.splitext(os.path.basename(fp))[0]
@@ -2587,7 +2588,8 @@ async def data_explorer(req: dict):
                                 bw, bh = float(parts[3]), float(parts[4])
                                 box_sizes.append({"w": bw, "h": bh})
                                 box_details.append({"cid": cid, "cx": float(parts[1]), "cy": float(parts[2]), "w": bw, "h": bh})
-                # aspect ratio
+                                box_aspect_ratios.append(round(bw / max(bh, 1e-6), 2))
+                # image aspect ratio
                 try:
                     im = cv2.imread(fp)
                     if im is not None:
@@ -2601,7 +2603,8 @@ async def data_explorer(req: dict):
             _explorer_state["data"] = {
                 "total": n, "shown": len(file_info), "files": file_info,
                 "class_counts": class_counts, "img_class_counts": img_class_count_dict,
-                "box_sizes": box_sizes, "aspect_ratios": aspect_ratios
+                "box_sizes": box_sizes, "aspect_ratios": aspect_ratios,
+                "box_aspect_ratios": box_aspect_ratios
             }
             _explorer_state.update(running=False, msg="Complete")
         except Exception as e:
@@ -2914,37 +2917,56 @@ class RemapperRequest(BaseModel):
     auto_reindex: bool = True
     recursive: bool = False
 
+_remapper_state = {"running": False, "progress": 0, "total": 0, "msg": "", "results": {}}
+_all_states["remapper"] = _remapper_state
+
 @app.post("/api/data/remapper")
 async def data_remapper(req: RemapperRequest):
-    try:
-        os.makedirs(req.output_dir, exist_ok=True)
-        label_files = sorted(glob_module.glob(os.path.join(req.label_dir, "*.txt")))
-        if req.recursive:
-            label_files += sorted(glob_module.glob(os.path.join(req.label_dir, "**", "*.txt"), recursive=True))
-            label_files = list(dict.fromkeys(label_files))
-        if not label_files:
-            return {"error": "No label files found"}
-        mapping = {int(k): int(v) for k, v in req.mapping.items()} if req.mapping else {}
-        count = 0
-        for txt in label_files:
-            lines = []
-            with open(txt) as f:
-                for line in f:
-                    parts = line.strip().split()
-                    if len(parts) >= 5:
-                        cid = int(parts[0])
-                        if mapping:
-                            if cid in mapping:
-                                cid = mapping[cid]
-                            else:
-                                continue
-                        lines.append(f"{cid} {' '.join(parts[1:])}")
-                        count += 1
-            with open(os.path.join(req.output_dir, os.path.basename(txt)), "w") as f:
-                f.write("\n".join(lines) + "\n" if lines else "")
-        return {"ok": True, "files": len(label_files), "labels": count}
-    except Exception as e:
-        return {"error": str(e)}
+    if _remapper_state["running"]:
+        return {"error": "Already running"}
+    _remapper_state.update(running=True, progress=0, total=0, msg="Remapping...", results={})
+
+    def _run():
+        try:
+            os.makedirs(req.output_dir, exist_ok=True)
+            label_files = sorted(glob_module.glob(os.path.join(req.label_dir, "*.txt")))
+            if req.recursive:
+                label_files += sorted(glob_module.glob(os.path.join(req.label_dir, "**", "*.txt"), recursive=True))
+                label_files = list(dict.fromkeys(label_files))
+            if not label_files:
+                _remapper_state.update(running=False, msg="No label files found")
+                return
+            mapping = {int(k): int(v) for k, v in req.mapping.items()} if req.mapping else {}
+            _remapper_state["total"] = len(label_files)
+            count = 0
+            for idx, txt in enumerate(label_files):
+                lines = []
+                with open(txt) as f:
+                    for line in f:
+                        parts = line.strip().split()
+                        if len(parts) >= 5:
+                            cid = int(parts[0])
+                            if mapping:
+                                if cid in mapping:
+                                    cid = mapping[cid]
+                                else:
+                                    continue
+                            lines.append(f"{cid} {' '.join(parts[1:])}")
+                            count += 1
+                with open(os.path.join(req.output_dir, os.path.basename(txt)), "w") as f:
+                    f.write("\n".join(lines) + "\n" if lines else "")
+                _remapper_state["progress"] = idx + 1
+            _remapper_state["results"] = {"files": len(label_files), "labels": count}
+            _remapper_state.update(running=False, msg="Complete")
+        except Exception as e:
+            _remapper_state.update(running=False, msg=f"Error: {e}")
+
+    _executor.submit(_run)
+    return {"ok": True}
+
+@app.get("/api/data/remapper/status")
+async def remapper_status():
+    return dict(_remapper_state)
 
 
 # ── Data: Merger API ───────────────────────────────────
@@ -3023,36 +3045,109 @@ class SamplerRequest(BaseModel):
     include_labels: bool = True
     recursive: bool = False
 
-_sampler_state = {"running": False, "msg": "", "results": {}}
+_sampler_state = {"running": False, "progress": 0, "total": 0, "msg": "", "results": {}}
 _all_states["sampler"] = _sampler_state
+
+def _farthest_point_sample(candidates, features, n):
+    """Select n items from candidates maximizing diversity via farthest-point sampling."""
+    import numpy as np, random as _rnd
+    if len(candidates) <= n:
+        return list(candidates)
+    feat = np.array([features[c] for c in candidates])
+    selected = [_rnd.randrange(len(candidates))]
+    dists = np.full(len(candidates), np.inf)
+    for _ in range(n - 1):
+        last = feat[selected[-1]]
+        d = np.sum((feat - last) ** 2, axis=1)
+        dists = np.minimum(dists, d)
+        dists[selected] = -1
+        selected.append(int(np.argmax(dists)))
+    return [candidates[i] for i in selected]
 
 @app.post("/api/data/sampler")
 async def data_sampler(req: SamplerRequest):
     if _sampler_state["running"]:
         return {"error": "Already running"}
-    _sampler_state.update(running=True, msg="Sampling...", results={})
+    _sampler_state.update(running=True, progress=0, total=0, msg="Scanning...", results={})
 
     def _run():
         try:
             import random, shutil
+            import numpy as np
             random.seed(req.seed)
+            np.random.seed(req.seed)
             imgs = _glob_images(req.img_dir, recursive=req.recursive)
             if not imgs:
                 _sampler_state.update(running=False, msg="No images found")
                 return
-            n = min(req.target_count, len(imgs))
-            selected = random.sample(imgs, n)
+
+            lbl_dir = req.label_dir or req.img_dir
+            # Parse labels: class→images, image→bbox features
+            class_images = {}  # {cid: set of img paths}
+            img_features = {}  # {img_path: mean bbox center [cx, cy]}
+            for fp in imgs:
+                stem = os.path.splitext(os.path.basename(fp))[0]
+                txt = os.path.join(lbl_dir, stem + ".txt")
+                centers = []
+                classes = set()
+                if os.path.isfile(txt):
+                    with open(txt) as f:
+                        for line in f:
+                            p = line.strip().split()
+                            if len(p) >= 5:
+                                classes.add(int(p[0]))
+                                centers.append([float(p[1]), float(p[2])])
+                for c in classes:
+                    class_images.setdefault(c, set()).add(fp)
+                img_features[fp] = np.mean(centers, axis=0).tolist() if centers else [0.5, 0.5]
+
+            selected = set()
+            strategy = req.strategy.lower()
+            if strategy == "random":
+                selected = set(random.sample(imgs, min(req.target_count, len(imgs))))
+            elif strategy == "stratified":
+                total_assoc = sum(len(v) for v in class_images.values())
+                for cid, cimgs in class_images.items():
+                    n = max(1, int(req.target_count * len(cimgs) / max(total_assoc, 1)))
+                    selected.update(random.sample(list(cimgs), min(n, len(cimgs))))
+                remaining = [f for f in imgs if f not in selected]
+                need = req.target_count - len(selected)
+                if need > 0 and remaining:
+                    selected.update(random.sample(remaining, min(need, len(remaining))))
+            elif strategy == "balanced":
+                if not class_images:
+                    selected = set(random.sample(imgs, min(req.target_count, len(imgs))))
+                else:
+                    per_class = max(1, req.target_count // len(class_images))
+                    for cid, cimgs in class_images.items():
+                        pool = list(cimgs)
+                        if len(pool) <= per_class:
+                            selected.update(pool)
+                        else:
+                            picked = _farthest_point_sample(pool, img_features, per_class)
+                            selected.update(picked)
+
+            selected = list(selected)
+            _sampler_state["total"] = len(selected)
+            _sampler_state["msg"] = "Copying..."
             os.makedirs(os.path.join(req.output_dir, "images"), exist_ok=True)
             if req.include_labels:
                 os.makedirs(os.path.join(req.output_dir, "labels"), exist_ok=True)
-            for fp in selected:
+            before_classes = {c: len(v) for c, v in class_images.items()}
+            after_classes = {}
+            for i, fp in enumerate(selected):
                 shutil.copy2(fp, os.path.join(req.output_dir, "images"))
-                if req.include_labels and req.label_dir:
+                if req.include_labels and lbl_dir:
                     stem = os.path.splitext(os.path.basename(fp))[0]
-                    txt = os.path.join(req.label_dir, stem + ".txt")
+                    txt = os.path.join(lbl_dir, stem + ".txt")
                     if os.path.isfile(txt):
                         shutil.copy2(txt, os.path.join(req.output_dir, "labels"))
-            _sampler_state["results"] = {"total": len(imgs), "sampled": n}
+                for c, cimgs in class_images.items():
+                    if fp in cimgs:
+                        after_classes[c] = after_classes.get(c, 0) + 1
+                _sampler_state["progress"] = i + 1
+            _sampler_state["results"] = {"total": len(imgs), "sampled": len(selected),
+                                         "before": before_classes, "after": after_classes}
             _sampler_state.update(running=False, msg="Complete")
         except Exception as e:
             _sampler_state.update(running=False, msg=f"Error: {e}")
@@ -3321,84 +3416,6 @@ async def quality_similarity(req: dict):
 @app.get("/api/quality/similarity/status")
 async def similarity_status():
     return dict(_sim_state)
-
-
-# ── Batch: Batch Inference API ─────────────────────────
-class BatchInferRequest(BaseModel):
-    model_path: str
-    img_dir: str
-    output_dir: str
-    output_format: str = "YOLO txt"
-    save_vis: bool = False
-
-_batch_state = {"running": False, "progress": 0, "total": 0, "msg": "", "results": {}}
-_all_states["batch_infer"] = _batch_state
-
-@app.post("/api/batch/run")
-async def batch_infer(req: BatchInferRequest):
-    if _batch_state["running"]:
-        return {"error": "Already running"}
-    _batch_state.update(running=True, progress=0, total=0, msg="Starting...", results={})
-
-    def _run():
-        try:
-            from core.model_loader import load_model as _load
-            from core.inference import run_inference
-            mi = _load(req.model_path, model_type="yolo")
-            imgs = _glob_images(req.img_dir)
-            if not imgs:
-                _batch_state.update(running=False, msg="No images found")
-                return
-            _batch_state["total"] = len(imgs)
-            os.makedirs(req.output_dir, exist_ok=True)
-            names = mi.names or {}
-            all_results = []
-            for i, fp in enumerate(imgs):
-                frame = cv2.imread(fp)
-                if frame is None:
-                    _batch_state["progress"] = i + 1
-                    continue
-                h, w = frame.shape[:2]
-                result = run_inference(mi, frame, 0.25)
-                stem = os.path.splitext(os.path.basename(fp))[0]
-                if "YOLO" in req.output_format:
-                    lines = []
-                    for box, score, cid in zip(result.boxes, result.scores, result.class_ids):
-                        x1, y1, x2, y2 = box
-                        cx = ((x1+x2)/2)/w; cy = ((y1+y2)/2)/h
-                        bw = (x2-x1)/w; bh = (y2-y1)/h
-                        lines.append(f"{int(cid)} {cx:.6f} {cy:.6f} {bw:.6f} {bh:.6f} {float(score):.4f}")
-                    with open(os.path.join(req.output_dir, stem + ".txt"), "w") as f:
-                        f.write("\n".join(lines) + "\n" if lines else "")
-                elif "JSON" in req.output_format:
-                    for box, score, cid in zip(result.boxes, result.scores, result.class_ids):
-                        all_results.append({"file": os.path.basename(fp), "class_id": int(cid),
-                                            "class_name": names.get(int(cid), str(int(cid))),
-                                            "confidence": round(float(score), 4),
-                                            "bbox": [round(float(x), 1) for x in box]})
-                elif "CSV" in req.output_format:
-                    pass  # handled below
-                if req.save_vis:
-                    vis = _draw_detections(frame, result, names)
-                    cv2.imwrite(os.path.join(req.output_dir, stem + "_vis.jpg"), vis, [cv2.IMWRITE_JPEG_QUALITY, 85])
-                _batch_state["progress"] = i + 1
-                _batch_state["msg"] = f"{i+1}/{len(imgs)}"
-            if "JSON" in req.output_format:
-                import json as _json
-                with open(os.path.join(req.output_dir, "results.json"), "w") as f:
-                    _json.dump(all_results, f, indent=2)
-            _batch_state["results"] = {"images": len(imgs), "detections": sum(len(run_inference(mi, cv2.imread(fp), 0.25).boxes) for fp in [] )}
-            _batch_state["results"] = {"images": len(imgs)}
-            _batch_state.update(running=False, msg="Complete")
-        except Exception as e:
-            _batch_state.update(running=False, msg=f"Error: {e}")
-
-    _executor.submit(_run)
-    return {"ok": True}
-
-@app.get("/api/batch/status")
-async def batch_status():
-    return dict(_batch_state)
 
 
 # ── Batch: Augmentation Preview API ────────────────────

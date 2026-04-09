@@ -117,7 +117,8 @@ const I18n = {
     'explorer.view_chart_box':   { en: 'Class Dist. (Box)',   ko: '클래스 분포 (박스 단위)' },
     'explorer.view_chart_image': { en: 'Class Dist. (Image)', ko: '클래스 분포 (이미지 단위)' },
     'explorer.view_size_dist':   { en: 'Box Size Dist.',      ko: '박스 크기 분포' },
-    'explorer.view_aspect_dist': { en: 'Aspect Ratio Dist.',  ko: '종횡비 분포' },
+    'explorer.view_aspect_dist': { en: 'Image Aspect Ratio',  ko: '이미지 종횡비 분포' },
+    'explorer.view_box_aspect_dist': { en: 'Box Aspect Ratio', ko: '박스 종횡비 분포' },
     // Splitter
     'splitter.input':      { en: 'Input Dataset',     ko: '입력 데이터셋' },
     'splitter.output':     { en: 'Output Directory',  ko: '출력 디렉토리' },

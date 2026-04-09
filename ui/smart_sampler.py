@@ -25,7 +25,9 @@ class _SampleWorker(QThread):
 
     def run(self):
         try:
+            import numpy as np
             random.seed(self.seed)
+            np.random.seed(self.seed)
             files = []
             for e in ("*.jpg", "*.jpeg", "*.png", "*.bmp"):
                 files.extend(glob.glob(os.path.join(self.img_dir, "**", e), recursive=True))
@@ -36,30 +38,34 @@ class _SampleWorker(QThread):
 
             # load class info per image
             img_classes = {}  # {img_path: set of class_ids}
-            class_images = {}  # {class_id: [img_paths]}
+            class_images = {}  # {class_id: set of img_paths}
+            img_features = {}  # {img_path: mean bbox center [cx, cy]}
             for fp in files:
                 stem = os.path.splitext(os.path.basename(fp))[0]
                 txt = os.path.join(self.lbl_dir, stem + ".txt")
                 classes = set()
+                centers = []
                 if os.path.isfile(txt):
                     with open(txt) as f:
                         for line in f:
                             p = line.strip().split()
-                            if p:
+                            if len(p) >= 5:
                                 classes.add(int(p[0]))
+                                centers.append([float(p[1]), float(p[2])])
                 img_classes[fp] = classes
                 for c in classes:
-                    class_images.setdefault(c, []).append(fp)
+                    class_images.setdefault(c, set()).add(fp)
+                img_features[fp] = np.mean(centers, axis=0).tolist() if centers else [0.5, 0.5]
 
             selected = set()
             if self.strategy == "random":
                 selected = set(random.sample(files, min(self.target, len(files))))
             elif self.strategy == "stratified":
                 # proportional sampling per class
-                total_boxes = sum(len(v) for v in class_images.values())
+                total_assoc = sum(len(v) for v in class_images.values())
                 for cid, imgs in class_images.items():
-                    n = max(1, int(self.target * len(imgs) / max(total_boxes, 1)))
-                    selected.update(random.sample(imgs, min(n, len(imgs))))
+                    n = max(1, int(self.target * len(imgs) / max(total_assoc, 1)))
+                    selected.update(random.sample(list(imgs), min(n, len(imgs))))
                 # fill remaining
                 remaining = [f for f in files if f not in selected]
                 need = self.target - len(selected)
@@ -71,14 +77,20 @@ class _SampleWorker(QThread):
                 else:
                     per_class = max(1, self.target // len(class_images))
                     for cid, imgs in class_images.items():
-                        unique = list(set(imgs))
-                        if len(unique) >= per_class:
-                            selected.update(random.sample(unique, per_class))
+                        pool = list(imgs)
+                        if len(pool) <= per_class:
+                            selected.update(pool)
                         else:
-                            selected.update(unique)
-                            # oversample
-                            extra = per_class - len(unique)
-                            selected.update(random.choices(unique, k=extra))
+                            # Farthest-point sampling for diversity
+                            feat = np.array([img_features[p] for p in pool])
+                            idxs = [random.randrange(len(pool))]
+                            dists = np.full(len(pool), np.inf)
+                            for _ in range(per_class - 1):
+                                d = np.sum((feat - feat[idxs[-1]]) ** 2, axis=1)
+                                dists = np.minimum(dists, d)
+                                dists[idxs] = -1
+                                idxs.append(int(np.argmax(dists)))
+                            selected.update(pool[i] for i in idxs)
 
             # copy
             os.makedirs(os.path.join(self.out_dir, "images"), exist_ok=True)
