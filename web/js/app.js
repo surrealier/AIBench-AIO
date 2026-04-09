@@ -65,7 +65,7 @@ const App = {
           </span>
           <select id="lang-select" class="form-input input-normal" style="width:auto;padding:0.125rem 0.5rem;font-size:12px;">
             <option value="en" ${lang==='en'?'selected':''}>EN</option>
-            <option value="ko" ${lang==='ko'?'selected':''}>한국어</option>
+            <option value="ko" ${lang==='ko'?'selected':''}>KO</option>
           </select>
         </div>
       </div>`;

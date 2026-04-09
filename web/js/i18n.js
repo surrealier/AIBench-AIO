@@ -1,6 +1,6 @@
 /* i18n — Internationalization for ssook Web UI */
 const I18n = {
-  _lang: localStorage.getItem('ssook-lang') || (navigator.language.startsWith('ko') ? 'ko' : 'en'),
+  _lang: localStorage.getItem('ssook-lang') || 'en',
   _strings: {
     // Sidebar sections
     'sec.inference':   { en: 'Inference',   ko: '추론' },
