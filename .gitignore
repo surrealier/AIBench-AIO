@@ -50,6 +50,7 @@ snapshots/
 *.xlsx
 *.html
 !docs/**/*.html
+!web/**/*.html
 
 # ===== Archives =====
 *.zip

@@ -26,6 +26,8 @@ a = Analysis(
         'core.app_config', 'core.model_loader', 'core.inference',
         'core.benchmark_runner', 'core.evaluation',
         'server',
+        'webview', 'webview.platforms', 'webview.platforms.edgechromium',
+        'clr_loader', 'pythonnet',
     ],
     hookspath=[],
     runtime_hooks=[],

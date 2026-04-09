@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ssook</title>
+  <link rel="icon" href="/assets/icon.svg" type="image/svg+xml">
+  <link rel="icon" href="/assets/icon.ico" sizes="any">
+  <link rel="stylesheet" href="/css/app.css?v=1.2.0">
+</head>
+<body style="display:flex;flex-direction:column;height:100vh;margin:0;overflow:hidden;">
+  <div class="app-shell" id="app" style="flex:1;min-height:0;">
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+      <div class="page-header">
+        <h2 class="text-heading-h3" id="page-title"></h2>
+        <div id="page-actions"></div>
+        <button id="notify-btn" onclick="Notify.toggle()" aria-label="Notifications">
+          <span id="notify-badge"></span>
+        </button>
+      </div>
+      <div class="page-body" id="page-body"></div>
+    </main>
+  </div>
+  <div style="height:28px;flex-shrink:0;background:var(--background-tint-00);border-top:1px solid var(--border-01);display:flex;align-items:center;padding:0 1rem;font-size:12px;">
+    <span class="text-secondary" id="status-text"></span>
+    <span class="text-secondary" style="margin-left:auto;" id="status-info"></span>
+  </div>
+  <script src="/js/icons.js?v=1.2.0"></script>
+  <script src="/js/i18n.js?v=1.2.0"></script>
+  <script src="/js/api.js?v=1.2.0"></script>
+  <script src="/js/notify.js?v=1.2.0"></script>
+  <script src="/js/help-annotations-main.js?v=1.2.0"></script>
+  <script src="/js/help-annotations-extra.js?v=1.2.0"></script>
+  <script src="/js/global.js?v=1.2.0"></script>
+  <script src="/js/tabs.js?v=1.2.0"></script>
+  <script src="/js/tabs-extra.js?v=1.2.0"></script>
+  <script src="/js/app.js?v=1.2.0"></script>
+</body>
+</html>

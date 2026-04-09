@@ -1,10 +1,8 @@
 """
 ssook Desktop Launcher
 
-Starts the FastAPI server and opens the UI.
-Supports two modes:
-  - pywebview (native window, if installed)
-  - browser fallback (opens default browser)
+Starts the FastAPI server and opens the UI in a pywebview window.
+Falls back to the default browser if pywebview is not installed.
 
 Usage:
   python run_web.py              # auto-detect best mode
@@ -19,61 +17,61 @@ import threading
 import webbrowser
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent
-sys.path.insert(0, str(ROOT))
-
-# PyInstaller frozen exe may set sys.stdout/stderr to None → patch early
+# ── Frozen exe support ──────────────────────────────────
+# PyInstaller with console=False sets stdout/stderr to None
 if sys.stdout is None:
     sys.stdout = open(os.devnull, "w")
 if sys.stderr is None:
     sys.stderr = open(os.devnull, "w")
 
+if getattr(sys, "frozen", False):
+    ROOT = Path(sys._MEIPASS)
+    os.chdir(os.path.dirname(sys.executable))
+else:
+    ROOT = Path(__file__).resolve().parent
+
+sys.path.insert(0, str(ROOT))
+
 
 def _set_windows_icon():
     """Set taskbar/titlebar icon on Windows."""
-    if sys.platform != 'win32':
+    if sys.platform != "win32":
         return
     try:
         import ctypes
-        # Set AppUserModelID so Windows groups this as its own app with custom icon
-        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID('ssook.App')
-        # Set console window icon
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("ssook.App")
         ico = str(ROOT / "assets" / "icon.ico")
         if os.path.exists(ico):
-            from ctypes import wintypes
             SendMessage = ctypes.windll.user32.SendMessageW
             LoadImage = ctypes.windll.user32.LoadImageW
-            IMAGE_ICON, LR_LOADFROMFILE = 1, 0x0010
-            WM_SETICON, ICON_BIG, ICON_SMALL = 0x0080, 1, 0
             hwnd = ctypes.windll.kernel32.GetConsoleWindow()
             if hwnd:
-                for size_flag, px in [(ICON_BIG, 32), (ICON_SMALL, 16)]:
-                    hicon = LoadImage(0, ico, IMAGE_ICON, px, px, LR_LOADFROMFILE)
-                    if hicon:
-                        SendMessage(hwnd, WM_SETICON, size_flag, hicon)
+                for flag, px in [(1, 32), (0, 16)]:
+                    h = LoadImage(0, ico, 1, px, px, 0x0010)
+                    if h:
+                        SendMessage(hwnd, 0x0080, flag, h)
     except Exception:
         pass
 
 
 def start_server(port: int):
     """Start FastAPI server in a background thread."""
-    import uvicorn
     import logging
+    log_path = os.path.join(os.path.dirname(sys.executable) if getattr(sys, "frozen", False) else ".", "ssook.log")
     logging.basicConfig(level=logging.INFO,
                         format="%(asctime)s [%(levelname)s] %(message)s",
-                        filename="ssook.log", filemode="a")
-    # Also log to stderr
+                        filename=log_path, filemode="a")
     logging.getLogger().addHandler(logging.StreamHandler())
     try:
+        import uvicorn
         from server import app
         uvicorn.run(app, host="127.0.0.1", port=port, log_level="warning",
                     timeout_keep_alive=30)
     except Exception as e:
         logging.exception(f"Server crashed: {e}")
-        print(f"\n[FATAL] Server error: {e}", file=sys.stderr)
 
 
-def wait_for_server(port: int, timeout: float = 10.0):
+def wait_for_server(port: int, timeout: float = 15.0):
     """Wait until the server is accepting connections."""
     import socket
     start = time.time()
@@ -93,49 +91,35 @@ def main():
     args = parser.parse_args()
 
     url = f"http://localhost:{args.port}"
-
     _set_windows_icon()
 
     # Start server in background
-    server_thread = threading.Thread(target=start_server, args=(args.port,), daemon=True)
-    server_thread.start()
+    threading.Thread(target=start_server, args=(args.port,), daemon=True).start()
 
-    print(f"Starting ssook at {url} ...")
     if not wait_for_server(args.port):
-        print("ERROR: Server failed to start")
+        print("ERROR: Server failed to start. Check ssook.log", file=sys.stderr)
         sys.exit(1)
 
-    # Try pywebview for native desktop window
+    # pywebview (native window) — default
     if not args.browser:
         try:
             import webview
-            print("Opening native window...")
             ico = str(ROOT / "assets" / ("icon.ico" if sys.platform == "win32" else "icon.png"))
-            webview.create_window(
-                "ssook",
-                url,
-                width=1400,
-                height=900,
-                min_size=(1024, 600),
-            )
+            webview.create_window("ssook", url, width=1400, height=900, min_size=(1024, 600))
             webview.start(icon=ico)
             return
         except ImportError:
             pass
-        except Exception as e:
-            print(f"[pywebview error] {e}", file=sys.stderr)
-            import traceback; traceback.print_exc()
+        except Exception:
+            pass
 
-    # Fallback: open in browser
-    print(f"Opening browser at {url}")
+    # Fallback: browser
     webbrowser.open(url)
-
-    # Keep alive
     try:
         while True:
             time.sleep(1)
     except KeyboardInterrupt:
-        print("\nShutting down...")
+        pass
 
 
 if __name__ == "__main__":
