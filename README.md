@@ -10,7 +10,7 @@
 [![FastAPI](https://img.shields.io/badge/backend-FastAPI-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![ONNX Runtime](https://img.shields.io/badge/runtime-ONNX-005CED?logo=onnx&logoColor=white)](https://onnxruntime.ai)
 [![License: MIT](https://img.shields.io/badge/license-MIT-yellow.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-1.3.1-blue)](#)
+[![Version](https://img.shields.io/badge/version-1.3.2-blue)](#)
 
 </div>
 
@@ -162,6 +162,11 @@ python -m pytest tests/ -v
 ---
 
 ## 📋 Changelog
+
+### v1.3.2
+- **Bugfix**: Fix Internal Server Error (index.html missing from build)
+- **Bugfix**: Fix frozen exe path resolution (`sys._MEIPASS`)
+- **pywebview**: Native desktop window as default, browser as fallback
 
 ### v1.3.1
 - **Sample Data**: Built-in test images (bus.jpg, zidane.jpg) and video (people.mp4)
