@@ -156,6 +156,12 @@ const App = {
       document.getElementById('status-info').textContent =
         `${info.os || ''} | Python ${info.python || ''} | ORT ${info.ort || ''}`;
     } catch(e) {}
+    // Load default paths from config
+    try {
+      const c = await API.config();
+      if (c.samples_dir && !G.imgDir) setImgDir(c.samples_dir);
+      if (c.default_model_path && !G.model) setModel(c.default_model_path);
+    } catch(e) {}
     this.setStatus(I18n.t('ready'));
   }
 };

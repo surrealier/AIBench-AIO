@@ -104,14 +104,17 @@ def main():
     if not args.browser:
         try:
             import webview
+            import logging
+            logging.getLogger("pywebview").setLevel(logging.DEBUG)
             ico = str(ROOT / "assets" / ("icon.ico" if sys.platform == "win32" else "icon.png"))
             webview.create_window("ssook", url, width=1400, height=900, min_size=(1024, 600))
-            webview.start(icon=ico)
+            webview.start(icon=ico, debug=False)
             return
-        except ImportError:
-            pass
-        except Exception:
-            pass
+        except ImportError as e:
+            print(f"[pywebview] not installed: {e}", file=sys.stderr)
+        except Exception as e:
+            print(f"[pywebview] failed: {e}", file=sys.stderr)
+            import traceback; traceback.print_exc(file=sys.stderr)
 
     # Fallback: browser
     webbrowser.open(url)

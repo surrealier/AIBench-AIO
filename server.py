@@ -109,6 +109,7 @@ async def get_config():
             "default_model_path": cfg.default_model_path,
             "model_types": mt,
             "class_styles": cs,
+            "samples_dir": str(ROOT / "assets" / "samples"),
         }
     except Exception as e:
         return {"error": str(e)}
