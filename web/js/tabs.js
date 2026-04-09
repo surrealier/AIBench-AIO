@@ -18,7 +18,7 @@ Tabs.viewer = {
               <select class="form-input input-normal" id="v-model-type" style="flex:1;height:30px;font-size:10px;min-width:0;overflow:hidden;text-overflow:ellipsis;padding:0 6px;" onchange="Tabs.viewer._onModelTypeChange()"></select>
             </div>
             <div style="display:flex;gap:0.25rem;align-items:center;margin-bottom:0.4rem;">
-              <label class="form-label" style="font-size:10px;margin:0;white-space:nowrap;">배치</label>
+              <label class="form-label" style="font-size:10px;margin:0;white-space:nowrap;">${t('viewer.batch')}</label>
               <input type="number" class="form-input input-normal" value="1" min="1" max="16" id="v-batch-size" style="flex:1;height:26px;font-size:10px;" onchange="Tabs.viewer._onBatchChange()">
             </div>
             <div style="margin-bottom:0;">
@@ -35,15 +35,15 @@ Tabs.viewer = {
               <button class="btn btn-secondary btn-sm" style="flex:1;" onclick="Tabs.viewer.browseModel()">${t('browse')}</button>
               <button class="btn btn-ghost btn-sm" onclick="Tabs.viewer.refreshModels()" title="Refresh">↻</button>
             </div>
-            <div id="v-model-list" style="flex:1;overflow-y:auto;font-size:12px;" class="text-secondary">Loading...</div>
+            <div id="v-model-list" style="flex:1;overflow-y:auto;font-size:12px;" class="text-secondary">${t('viewer.loading')}</div>
           </div>
           <div class="card-flat" style="padding:0.75rem;flex:1;display:flex;flex-direction:column;">
-            <div class="text-label" style="margin-bottom:0.5rem;">Video / Image</div>
+            <div class="text-label" style="margin-bottom:0.5rem;">${t('viewer.video_image')}</div>
             <div style="display:flex;gap:0.25rem;margin-bottom:0.5rem;">
               <button class="btn btn-secondary btn-sm" style="flex:1;" onclick="Tabs.viewer.browseVideo()">${t('browse')}</button>
               <button class="btn btn-ghost btn-sm" onclick="Tabs.viewer.refreshVideos()" title="Refresh">↻</button>
             </div>
-            <div id="v-video-list" style="flex:1;overflow-y:auto;font-size:12px;" class="text-secondary">Loading...</div>
+            <div id="v-video-list" style="flex:1;overflow-y:auto;font-size:12px;" class="text-secondary">${t('viewer.loading')}</div>
           </div>
         </div>
         <!-- Center: canvas + controls -->
@@ -182,7 +182,7 @@ Tabs.viewer = {
   async _onModelTypeChange() {
     const v = document.getElementById('v-model-type').value;
     if (v.startsWith('clip_') || v.startsWith('emb_')) {
-      App.setStatus('CLIP/Embedder 모델은 뷰어에서 사용할 수 없습니다. 전용 탭을 이용하세요.');
+      App.setStatus(t('viewer.clip_not_viewer'));
       return;
     }
     await API.post('/api/config', { model_type: v });
@@ -213,21 +213,21 @@ Tabs.viewer = {
     try {
       const r = await API.listDir({ path: 'Models', exts: ['.onnx','.pt'] });
       const el = document.getElementById('v-model-list');
-      if (!r.files || !r.files.length) { el.textContent = 'No models in Models/'; return; }
+      if (!r.files || !r.files.length) { el.textContent = t('viewer.no_models'); return; }
       el.innerHTML = r.files.map(f =>
         `<div class="nav-item" style="padding:0.25rem 0.5rem;cursor:pointer;font-size:12px;border-radius:4px;" onclick="Tabs.viewer.selectModel('${f.path.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}')" title="${f.path}">${f.name}</div>`
       ).join('');
-    } catch(e) { document.getElementById('v-model-list').textContent = 'Models/ not found'; }
+    } catch(e) { document.getElementById('v-model-list').textContent = t('viewer.models_not_found'); }
   },
   async refreshVideos() {
     try {
       const r = await API.listDir({ path: 'Videos', exts: ['.mp4','.avi','.mov','.mkv','.jpg','.jpeg','.png','.bmp'] });
       const el = document.getElementById('v-video-list');
-      if (!r.files || !r.files.length) { el.textContent = 'No files in Videos/'; return; }
+      if (!r.files || !r.files.length) { el.textContent = t('viewer.no_files'); return; }
       el.innerHTML = r.files.map(f =>
         `<div class="nav-item" style="padding:0.25rem 0.5rem;cursor:pointer;font-size:12px;border-radius:4px;" onclick="Tabs.viewer.selectVideo('${f.path.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}')" title="${f.path}">${f.name}</div>`
       ).join('');
-    } catch(e) { document.getElementById('v-video-list').textContent = 'Videos/ not found'; }
+    } catch(e) { document.getElementById('v-video-list').textContent = t('viewer.videos_not_found'); }
   },
   async selectModel(path) {
     setModel(path);
@@ -290,8 +290,8 @@ Tabs.viewer = {
     } catch(e) {}
   },
   togglePlay() {
-    if (!G.model) { App.setStatus('Select a model first'); return; }
-    if (!G.videoPath) { App.setStatus('Select a video/image first'); return; }
+    if (!G.model) { App.setStatus(t('viewer.select_model_first')); return; }
+    if (!G.videoPath) { App.setStatus(t('viewer.select_video_first')); return; }
     // If playing, pause
     if (this._streamSessionId && !this._paused) {
       this._togglePause(); return;
@@ -300,7 +300,7 @@ Tabs.viewer = {
     if (this._streamSessionId && this._paused) {
       this._togglePause(); return;
     }
-    App.setStatus('Starting inference...');
+    App.setStatus(t('viewer.starting'));
     const ext = G.videoPath.split('.').pop().toLowerCase();
     if (['jpg','jpeg','png','bmp'].includes(ext)) this._inferImage();
     else this._startStream();
@@ -356,7 +356,7 @@ Tabs.viewer = {
       const seek = document.getElementById('v-seek');
       if (seek && !seek.matches(':active')) seek.value = s.frame_idx;
       if (s.playing && !s.paused) setTimeout(() => this._pollStatus(), 300);
-      else if (!s.playing) { App.setStatus('Playback finished'); this._resetAll(); }
+      else if (!s.playing) { App.setStatus(t('viewer.playback_done')); this._resetAll(); }
     } catch(e) {}
   },
   _resetAll() {
@@ -374,7 +374,7 @@ Tabs.viewer = {
     this._paused = r.paused;
     const btn = document.getElementById('btn-play');
     btn.innerHTML = this._paused ? '▶ ' + t('viewer.play') : '⏸ ' + t('viewer.pause');
-    App.setStatus(this._paused ? 'Paused' : 'Playing');
+    App.setStatus(this._paused ? t('viewer.paused') : t('viewer.playing'));
     if (!this._paused) this._pollStatus();
   },
   pause() { this._togglePause(); },
@@ -405,8 +405,8 @@ Tabs.viewer = {
   async snapshot() {
     if (!this._streamSessionId) return;
     const r = await API.post('/api/viewer/snapshot/' + this._streamSessionId, {});
-    if (r.ok) App.setStatus(`Snapshot saved: ${r.path}`);
-    else App.setStatus('Snapshot failed: ' + (r.error||''));
+    if (r.ok) App.setStatus(t('viewer.snapshot_saved', {path: r.path}));
+    else App.setStatus(t('viewer.snapshot_failed') + ': ' + (r.error||''));
   },
 };
 
@@ -418,11 +418,11 @@ Tabs.settings = {
       <div style="display:flex;gap:1.5rem;align-items:flex-start;">
         <div style="max-width:480px;flex:1;display:flex;flex-direction:column;gap:1.5rem;">
           <div class="card" style="padding:1.5rem;" id="settings-model-section">
-            <h3 class="text-heading-h3" style="margin-bottom:1rem;">모델 타입 관리</h3>
-            <button class="btn btn-secondary btn-sm" onclick="Tabs.settings.openCustomTypeDialog()">모델 타입 추가…</button>
+            <h3 class="text-heading-h3" style="margin-bottom:1rem;">${t('settings.model_type_mgmt')}</h3>
+            <button class="btn btn-secondary btn-sm" onclick="Tabs.settings.openCustomTypeDialog()">${t('settings.add_model_type')}</button>
           </div>
           <div class="card" style="padding:1.5rem;">
-            <h3 class="text-heading-h3" style="margin-bottom:1rem;">테스트 모델 다운로드</h3>
+            <h3 class="text-heading-h3" style="margin-bottom:1rem;">${t('settings.test_model_dl')}</h3>
             <div style="display:flex;flex-wrap:wrap;gap:0.5rem;">
               <a href="https://github.com/ultralytics/assets/releases/download/v8.3.0/yolo11n.onnx" target="_blank" rel="noopener" class="btn btn-secondary btn-sm">📥 Detection (YOLO11n)</a>
               <a href="https://github.com/ultralytics/assets/releases/download/v8.3.0/yolo11n-cls.onnx" target="_blank" rel="noopener" class="btn btn-secondary btn-sm">📥 Classification (YOLO11n-cls)</a>
@@ -440,7 +440,7 @@ Tabs.settings = {
             <div style="display:flex;gap:1.5rem;margin-top:0.75rem;">
               <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;color:var(--text-04);"><input type="checkbox" checked id="show-labels"> ${t('settings.show_labels')}</label>
               <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;color:var(--text-04);"><input type="checkbox" checked id="show-conf"> ${t('settings.show_conf')}</label>
-              <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;color:var(--text-04);"><input type="checkbox" checked id="show-label-bg"> 라벨 배경</label>
+              <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;color:var(--text-04);"><input type="checkbox" checked id="show-label-bg"> ${t('settings.label_bg')}</label>
             </div>
           </div>
           <div style="display:flex;gap:0.5rem;">
@@ -451,7 +451,7 @@ Tabs.settings = {
         <div style="flex:1;max-width:480px;">
           <div class="card" style="padding:1.5rem;">
             <h3 class="text-heading-h3" style="margin-bottom:1rem;">${t('settings.class_table')}</h3>
-            <div id="class-table-container" class="text-secondary" style="font-size:12px;">Load a model to see class settings</div>
+            <div id="class-table-container" class="text-secondary" style="font-size:12px;">${t('settings.load_model_hint')}</div>
           </div>
         </div>
       </div>`;
@@ -478,7 +478,7 @@ Tabs.settings = {
   },
   _buildClassTable(names, classStyles) {
     const container = document.getElementById('class-table-container');
-    if (!names || !Object.keys(names).length) { container.textContent = 'No classes'; return; }
+    if (!names || !Object.keys(names).length) { container.textContent = t('settings.no_classes'); return; }
     const styles = classStyles || {};
     let rows = '';
     for (const [id, name] of Object.entries(names)) {
@@ -494,8 +494,8 @@ Tabs.settings = {
       </tr>`;
     }
     container.innerHTML = `<div style="display:flex;gap:0.5rem;margin-bottom:0.5rem;">
-      <button class="btn btn-secondary btn-sm" onclick="Tabs.settings._toggleAllClasses(true)">전체 선택</button>
-      <button class="btn btn-secondary btn-sm" onclick="Tabs.settings._toggleAllClasses(false)">전체 해제</button>
+      <button class="btn btn-secondary btn-sm" onclick="Tabs.settings._toggleAllClasses(true)">${t('settings.select_all')}</button>
+      <button class="btn btn-secondary btn-sm" onclick="Tabs.settings._toggleAllClasses(false)">${t('settings.deselect_all')}</button>
     </div>
     <div style="max-height:400px;overflow-y:auto;">
       <table style="width:100%;font-size:12px;"><thead><tr>
@@ -560,49 +560,49 @@ Tabs.settings = {
     overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;display:flex;align-items:center;justify-content:center;';
     overlay.innerHTML = `
       <div style="background:var(--background-neutral-01);border-radius:12px;padding:1.5rem;width:860px;max-height:90vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,0.3);">
-        <h3 class="text-heading-h3" style="margin-bottom:1rem;">모델 타입 추가 — Output Shape 매핑</h3>
+        <h3 class="text-heading-h3" style="margin-bottom:1rem;">${t('cmt.title')}</h3>
         <div class="form-group">
-          <label class="form-label">타입 이름</label>
-          <input type="text" class="form-input input-normal" id="cmt-name" placeholder="예: my_custom_detr">
+          <label class="form-label">${t('cmt.type_name')}</label>
+          <input type="text" class="form-input input-normal" id="cmt-name" placeholder="${t('cmt.type_name_ph')}">
         </div>
         <div class="form-group" style="margin-top:0.75rem;">
-          <label class="form-label">ONNX 모델</label>
+          <label class="form-label">${t('cmt.onnx_model')}</label>
           <div style="display:flex;gap:0.5rem;">
-            <span id="cmt-model-label" class="text-secondary" style="flex:1;line-height:36px;">선택 안 됨</span>
-            <button class="btn btn-secondary btn-sm" onclick="Tabs.settings._cmtBrowseModel()">모델 선택…</button>
+            <span id="cmt-model-label" class="text-secondary" style="flex:1;line-height:36px;">${t('cmt.not_selected')}</span>
+            <button class="btn btn-secondary btn-sm" onclick="Tabs.settings._cmtBrowseModel()">${t('cmt.select_model')}</button>
           </div>
         </div>
-        <div id="cmt-shape-info" class="text-secondary" style="margin:0.75rem 0;font-size:12px;font-family:monospace;">모델을 로드하면 실제 추론 Output Shape이 표시됩니다.</div>
+        <div id="cmt-shape-info" class="text-secondary" style="margin:0.75rem 0;font-size:12px;font-family:monospace;">${t('cmt.shape_hint')}</div>
         <div class="form-group">
-          <label class="form-label">사용할 출력 텐서</label>
+          <label class="form-label">${t('cmt.output_tensor')}</label>
           <select class="form-input input-normal" id="cmt-oi" style="width:auto;" onchange="Tabs.settings._cmtOnOutputSelected()"></select>
         </div>
         <div id="cmt-dim-mapping" style="margin-top:0.75rem;"></div>
         <div style="display:flex;gap:1rem;align-items:center;margin-top:0.75rem;">
-          <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;"><input type="checkbox" id="cmt-nms" checked> NMS 적용</label>
+          <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;"><input type="checkbox" id="cmt-nms" checked> ${t('cmt.apply_nms')}</label>
           <label class="form-label" style="margin:0;">Confidence:</label>
           <input type="number" class="form-input input-normal" id="cmt-conf" value="0.25" min="0.01" max="1.0" step="0.05" style="width:80px;height:28px;">
         </div>
         <div class="form-group" style="margin-top:0.75rem;">
-          <label class="form-label">클래스 이름</label>
-          <input type="text" class="form-input input-normal" id="cmt-class-names" placeholder="0:person, 1:car, 2:bike  (비우면 자동)">
+          <label class="form-label">${t('cmt.class_names')}</label>
+          <input type="text" class="form-input input-normal" id="cmt-class-names" placeholder="${t('cmt.class_names_ph')}">
         </div>
         <div style="border-top:1px solid var(--border-default);margin-top:1rem;padding-top:1rem;">
           <div class="form-group">
-            <label class="form-label">테스트 이미지</label>
+            <label class="form-label">${t('cmt.test_image')}</label>
             <div style="display:flex;gap:0.5rem;">
-              <span id="cmt-test-label" class="text-secondary" style="flex:1;line-height:36px;">선택 안 됨</span>
-              <button class="btn btn-secondary btn-sm" onclick="Tabs.settings._cmtBrowseTestImg()">이미지 선택…</button>
-              <button class="btn btn-primary btn-sm" onclick="Tabs.settings._cmtRunTest()">추론 실행</button>
+              <span id="cmt-test-label" class="text-secondary" style="flex:1;line-height:36px;">${t('cmt.not_selected')}</span>
+              <button class="btn btn-secondary btn-sm" onclick="Tabs.settings._cmtBrowseTestImg()">${t('cmt.select_image')}</button>
+              <button class="btn btn-primary btn-sm" onclick="Tabs.settings._cmtRunTest()">${t('cmt.run_infer')}</button>
             </div>
           </div>
           <div id="cmt-test-result" style="margin-top:0.5rem;min-height:180px;display:flex;align-items:center;justify-content:center;background:var(--background-neutral-02);border-radius:8px;">
-            <span class="text-secondary">추론 결과가 여기에 표시됩니다.</span>
+            <span class="text-secondary">${t('cmt.result_hint')}</span>
           </div>
         </div>
         <div style="display:flex;gap:0.5rem;justify-content:flex-end;margin-top:1rem;">
-          <button class="btn btn-primary" onclick="Tabs.settings._cmtSave()">저장</button>
-          <button class="btn btn-secondary" onclick="document.getElementById('cmt-overlay').remove()">취소</button>
+          <button class="btn btn-primary" onclick="Tabs.settings._cmtSave()">${t('save')}</button>
+          <button class="btn btn-secondary" onclick="document.getElementById('cmt-overlay').remove()">${t('cancel')}</button>
         </div>
       </div>`;
     document.body.appendChild(overlay);
@@ -617,18 +617,18 @@ Tabs.settings = {
       if (!r.path) return;
       this._cmtModelPath = r.path;
       document.getElementById('cmt-model-label').textContent = r.path.split(/[\\/]/).pop();
-      document.getElementById('cmt-shape-info').textContent = '추론 중...';
+      document.getElementById('cmt-shape-info').textContent = t('cmt.inferring');
       // 실제 추론으로 output shape 획득 (#1c)
       const res = await API.post('/api/model/infer-shapes', { path: r.path });
       if (res.error) { document.getElementById('cmt-shape-info').textContent = 'Error: ' + res.error; return; }
       this._cmtInferredOutputs = res.outputs;
-      let info = '입력: ' + JSON.stringify(res.input_shape);
-      res.outputs.forEach(o => { info += '\n출력[' + o.index + '] ' + o.name + ': ' + JSON.stringify(o.shape); });
+      let info = t('cmt.input') + ': ' + JSON.stringify(res.input_shape);
+      res.outputs.forEach(o => { info += '\n' + t('cmt.output') + '[' + o.index + '] ' + o.name + ': ' + JSON.stringify(o.shape); });
       document.getElementById('cmt-shape-info').innerText = info;
       // 출력 텐서 선택 드롭다운
       const sel = document.getElementById('cmt-oi');
       sel.innerHTML = res.outputs.map(o =>
-        '<option value="' + o.index + '">출력[' + o.index + '] ' + o.name + ' — ' + JSON.stringify(o.shape) + '</option>'
+        '<option value="' + o.index + '">' + t('cmt.output') + '[' + o.index + '] ' + o.name + ' — ' + JSON.stringify(o.shape) + '</option>'
       ).join('');
       this._cmtOnOutputSelected();
     } catch(e) { document.getElementById('cmt-shape-info').textContent = 'Error: ' + e.message; }
@@ -652,7 +652,7 @@ Tabs.settings = {
     const attrOpts = ATTR_CHOICES.map(a => '<option>' + a + '</option>').join('');
     const dimOpts = DIM_ROLES.map(r => '<option>' + r + '</option>').join('');
 
-    let html = '<div class="text-label" style="margin-bottom:0.5rem;">각 차원의 의미를 지정하세요</div>';
+    let html = '<div class="text-label" style="margin-bottom:0.5rem;">' + t('cmt.dim_meaning') + '</div>';
     html += '<div style="display:flex;flex-direction:column;gap:0.75rem;">';
     shape.forEach((size, i) => {
       const defaultRole = i === 0 ? 'batch' : (i === shape.length - 1 ? 'attributes' : 'num_detections');
@@ -683,7 +683,7 @@ Tabs.settings = {
 
     if (role === 'attributes') {
       // 각 슬롯에 의미 매핑
-      const ATTR_CHOICES = ['(없음)','x1','y1','x2','y2','x_center','y_center','width','height','objectness','confidence','class_id'];
+      const ATTR_CHOICES = [t('cmt.none'),'x1','y1','x2','y2','x_center','y_center','width','height','objectness','confidence','class_id'];
       for (let c = 0; c < 200; c++) ATTR_CHOICES.push('conf_class' + c);
       const opts = ATTR_CHOICES.map(a => '<option>' + a + '</option>').join('');
       let html = '<div style="max-height:180px;overflow-y:auto;display:flex;flex-direction:column;gap:1px;font-size:12px;">';
@@ -703,7 +703,7 @@ Tabs.settings = {
       });
     } else {
       detail.innerHTML = '<span class="text-secondary" style="font-size:11px;">' +
-        (role === 'batch' ? '배치 차원 (무시됨)' : '탐지 개수 차원') + '</span>';
+        (role === 'batch' ? t('cmt.batch_dim') : t('cmt.det_count_dim')) + '</span>';
     }
   },
 
@@ -724,9 +724,9 @@ Tabs.settings = {
     const attrDimIdx = dimRoles.indexOf('attributes');
     if (attrDimIdx < 0) return { dimRoles, attrRoles: [], hasObjectness: false };
     const attrSels = [...document.querySelectorAll('.cmt-attr-sel[data-dim="' + attrDimIdx + '"]')];
-    const attrRoles = attrSels.map(s => s.value).filter(v => v !== '(없음)');
+    const attrRoles = attrSels.map(s => s.value).filter(v => v !== t('cmt.none'));
     const hasObjectness = attrRoles.includes('objectness');
-    return { dimRoles, attrRoles: attrSels.map(s => s.value === '(없음)' ? '' : s.value), hasObjectness };
+    return { dimRoles, attrRoles: attrSels.map(s => s.value === t('cmt.none') ? '' : s.value), hasObjectness };
   },
 
   _cmtParseClassNames() {
@@ -742,7 +742,7 @@ Tabs.settings = {
   },
 
   async _cmtRunTest() {
-    if (!this._cmtModelPath) { App.setStatus('모델을 먼저 선택하세요.'); return; }
+    if (!this._cmtModelPath) { App.setStatus(t('cmt.select_model_first')); return; }
     const name = document.getElementById('cmt-name').value.trim() || 'test';
     const { dimRoles, attrRoles, hasObjectness } = this._cmtCollectAttrRoles();
     const oi = +(document.getElementById('cmt-oi').value || 0);
@@ -765,7 +765,7 @@ Tabs.settings = {
           document.getElementById('cmt-test-result').innerHTML = '<span style="color:var(--action-danger-05);">Error: ' + r.error + '</span>';
         } else {
           document.getElementById('cmt-test-result').innerHTML =
-            '<div style="text-align:center;"><img src="data:image/jpeg;base64,' + r.image + '" style="max-width:100%;max-height:250px;cursor:pointer;" ondblclick="Tabs.settings._cmtZoomImg(this.src)" title="더블클릭으로 확대"><br><span class="text-secondary">탐지: ' + r.detections + '개</span></div>';
+            '<div style="text-align:center;"><img src="data:image/jpeg;base64,' + r.image + '" style="max-width:100%;max-height:250px;cursor:pointer;" ondblclick="Tabs.settings._cmtZoomImg(this.src)" title="' + t('cmt.dblclick_zoom') + '"><br><span class="text-secondary">' + t('cmt.detections', {n: r.detections}) + '</span></div>';
         }
       } else {
         const r = await API.post('/api/config/custom-model-type/test', {
@@ -775,7 +775,7 @@ Tabs.settings = {
         });
         document.getElementById('cmt-test-result').innerHTML = r.error
           ? '<span style="color:var(--action-danger-05);">Error: ' + r.error + '</span>'
-          : '<span class="text-secondary">더미 테스트: ' + r.detections + '개 탐지</span>';
+          : '<span class="text-secondary">' + t('cmt.dummy_test', {n: r.detections}) + '</span>';
       }
     } catch(e) { document.getElementById('cmt-test-result').innerHTML = '<span style="color:var(--action-danger-05);">' + e.message + '</span>'; }
   },
@@ -790,8 +790,8 @@ Tabs.settings = {
 
   async _cmtSave() {
     const name = document.getElementById('cmt-name').value.trim();
-    if (!name) { App.setStatus('타입 이름을 입력하세요.'); return; }
-    if (!this._cmtModelPath) { App.setStatus('모델을 먼저 선택하세요.'); return; }
+    if (!name) { App.setStatus(t('cmt.enter_name')); return; }
+    if (!this._cmtModelPath) { App.setStatus(t('cmt.select_model_first')); return; }
     const { dimRoles, attrRoles, hasObjectness } = this._cmtCollectAttrRoles();
     const oi = +(document.getElementById('cmt-oi').value || 0);
     const nms = document.getElementById('cmt-nms').checked;
@@ -805,7 +805,7 @@ Tabs.settings = {
         class_names: classNames,
       });
       if (r.ok) {
-        App.setStatus("'" + name + "' 모델 타입 저장 완료");
+        App.setStatus(t('cmt.saved', {name}));
         const sel = document.getElementById('v-model-type');
         if (sel && ![...sel.options].some(o => o.value === 'custom:' + name)) {
           sel.add(new Option(name, 'custom:' + name));
@@ -851,7 +851,7 @@ Tabs.benchmark = {
               <button class="btn btn-ghost btn-sm" onclick="document.getElementById('bench-results').innerHTML='<tr><td colspan=13 class=text-secondary style=text-align:center;padding:2rem>${t('bench.run_hint')}</td></tr>'">${t('reset')}</button>
             </div>
           </div>
-          <div class="table-container"><table><thead><tr><th>Model</th><th>Provider</th><th>FPS</th><th>Avg(ms)</th><th>Pre(ms)</th><th>Infer(ms)</th><th>Post(ms)</th><th title="P50 (중앙값): 전체 측정값의 50%가 이 값 이하인 지점. 일반적인 응답 시간.">P50(ms)</th><th title="P95: 전체 측정값의 95%가 이 값 이하. 대부분의 요청이 이 시간 내에 완료.">P95(ms)</th><th title="P99: 전체 측정값의 99%가 이 값 이하. 최악에 가까운 응답 시간 (tail latency).">P99(ms)</th><th>CPU%</th><th>RAM(MB)</th><th>GPU%</th></tr></thead>
+          <div class="table-container"><table><thead><tr><th>Model</th><th>Provider</th><th>FPS</th><th>Avg(ms)</th><th>Pre(ms)</th><th>Infer(ms)</th><th>Post(ms)</th><th title="${t('bench.p50_tip')}">P50(ms)</th><th title="${t('bench.p95_tip')}">P95(ms)</th><th title="${t('bench.p99_tip')}">P99(ms)</th><th>CPU%</th><th>RAM(MB)</th><th>GPU%</th></tr></thead>
           <tbody id="bench-results"><tr><td colspan="13" class="text-secondary" style="text-align:center;padding:2rem;">${t('bench.run_hint')}</td></tr></tbody></table></div>
         </div>
       </div>`;
@@ -905,7 +905,7 @@ Tabs.benchmark = {
   },
   stop() {
     this._polling = false;
-    App.setStatus('Stopped');
+    App.setStatus(t('stopped'));
     document.getElementById('bench-run').disabled = false;
     document.getElementById('bench-stop').disabled = true;
   },
@@ -934,7 +934,7 @@ Tabs.evaluation = {
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:0.75rem;">
             <div class="form-group">
-              <label class="form-label">Confidence</label>
+              <label class="form-label">${t('common.confidence')}</label>
               <input type="number" class="form-input input-normal" value="0.25" min="0.01" max="1.0" step="0.05" id="eval-conf" style="width:100px;">
             </div>
           </div>
@@ -943,14 +943,14 @@ Tabs.evaluation = {
             ${lblDirInput('eval-lbl')}
           </div>
           <div class="form-group" style="margin-top:0.75rem;">
-            <label class="form-label">GT 클래스 매핑 (id: name, 한 줄에 하나)</label>
+            <label class="form-label">${t('eval.gt_classmap')}</label>
             <textarea class="form-input" id="eval-classmap" rows="4" style="font-size:12px;font-family:monospace;" placeholder="0: person&#10;1: car&#10;2: bicycle"></textarea>
           </div>
           <div style="display:flex;gap:0.5rem;margin-top:1rem;">
             <button class="btn btn-primary" id="eval-run-btn" onclick="Tabs.evaluation.run()">${t('eval.run')}</button>
             <button class="btn btn-danger btn-sm" id="eval-stop-btn" disabled onclick="Tabs.evaluation.stop()">${t('stop')}</button>
             <div style="flex:1;"></div>
-            <button class="btn btn-secondary btn-sm" onclick="Tabs.evaluation.exportCSV()">CSV 내보내기</button>
+            <button class="btn btn-secondary btn-sm" onclick="Tabs.evaluation.exportCSV()">${t('eval.csv_export')}</button>
           </div>
           <div style="margin-top:0.5rem;">
             <div class="progress-track"><div class="progress-fill" id="eval-prog" style="width:0%"></div></div>
@@ -1016,11 +1016,11 @@ Tabs.evaluation = {
     const imgDir = document.getElementById('eval-img').value || G.imgDir;
     const lblDir = document.getElementById('eval-lbl').value || G.lblDir;
     const conf = parseFloat(document.getElementById('eval-conf')?.value || '0.25');
-    if (!models.length) { App.setStatus('Add at least one model'); return; }
-    if (!imgDir) { App.setStatus('Select images directory'); return; }
+    if (!models.length) { App.setStatus(t('eval.add_one_model')); return; }
+    if (!imgDir) { App.setStatus(t('eval.select_images')); return; }
 
     // GT 클래스 스캔 + 모델 클래스 로드 → 매핑 다이얼로그
-    App.setStatus('Loading class info...');
+    App.setStatus(t('eval.loading_class'));
     try {
       const gtRes = await API.post('/api/gt/classes', { label_dir: lblDir || imgDir });
       const gtClasses = gtRes.classes || [];
@@ -1044,7 +1044,7 @@ Tabs.evaluation = {
 
       document.getElementById('eval-run-btn').disabled = true;
       document.getElementById('eval-stop-btn').disabled = false;
-      document.getElementById('eval-status').textContent = 'Running...';
+      document.getElementById('eval-status').textContent = t('eval.running');
       document.getElementById('eval-prog').style.width = '0%';
 
       const r = await API.post('/api/evaluation/run-async', {
@@ -1088,25 +1088,25 @@ Tabs.evaluation = {
       });
 
       // Copy-from dropdown
-      let copyOpts = '<option value="">— 다른 모델에서 복사 —</option>';
+      let copyOpts = '<option value="">' + t('mapping.copy_from') + '</option>';
       modelInfos.forEach((mi, idx) => { copyOpts += `<option value="${idx}">${mi.name}</option>`; });
 
       dlg.innerHTML = `
-        <h3 style="margin-bottom:0.75rem;">클래스 매핑 — 선분으로 연결하세요</h3>
+        <h3 style="margin-bottom:0.75rem;">${t('mapping.title')}</h3>
         <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.75rem;">
-          <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;"><input type="checkbox" id="mapping-mapped-only" ${this._savedMappedOnly?'checked':''}> 매핑된 클래스만 평가</label>
+          <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;"><input type="checkbox" id="mapping-mapped-only" ${this._savedMappedOnly?'checked':''}> ${t('mapping.mapped_only')}</label>
           <div style="margin-left:auto;display:flex;gap:0.5rem;">
             <select class="form-input input-normal" id="mapping-copy-from" style="height:28px;font-size:11px;width:auto;">${copyOpts}</select>
-            <button class="btn btn-ghost btn-sm" id="mapping-copy-btn">복사</button>
-            <button class="btn btn-ghost btn-sm" id="mapping-clear-btn" style="color:var(--action-danger-05);">초기화</button>
+            <button class="btn btn-ghost btn-sm" id="mapping-copy-btn">${t('mapping.copy')}</button>
+            <button class="btn btn-ghost btn-sm" id="mapping-clear-btn" style="color:var(--action-danger-05);">${t('mapping.clear')}</button>
           </div>
         </div>
         <div style="display:flex;gap:0.5rem;border-bottom:1px solid var(--border-default);margin-bottom:0.75rem;padding-bottom:0.5rem;">${tabsHtml}</div>
         <div id="mapping-canvas-area" style="position:relative;"></div>
-        <div style="font-size:11px;color:var(--text-03);margin-top:0.5rem;">💡 왼쪽 모델 클래스를 클릭한 뒤 오른쪽 GT 클래스를 클릭하면 연결됩니다. 연결선을 클릭하면 삭제됩니다.</div>
+        <div style="font-size:11px;color:var(--text-03);margin-top:0.5rem;">${t('mapping.hint')}</div>
         <div style="display:flex;gap:0.5rem;justify-content:flex-end;margin-top:1rem;">
-          <button class="btn btn-secondary" id="mapping-cancel">취소</button>
-          <button class="btn btn-primary" id="mapping-ok">확인</button>
+          <button class="btn btn-secondary" id="mapping-cancel">${t('cancel')}</button>
+          <button class="btn btn-primary" id="mapping-ok">${t('confirm')}</button>
         </div>`;
 
       overlay.appendChild(dlg);
@@ -1131,7 +1131,7 @@ Tabs.evaluation = {
 
         // Left column: model classes
         html += `<div style="width:${COL_W}px;">`;
-        html += `<div style="font-size:11px;font-weight:600;color:var(--text-02);margin-bottom:4px;">모델 클래스</div>`;
+        html += `<div style="font-size:11px;font-weight:600;color:var(--text-02);margin-bottom:4px;">${t('mapping.model_cls')}</div>`;
         modelCls.forEach((mc, i) => {
           const mapped = conn[mc.id] !== undefined;
           const color = mapped ? COLORS[mc.id % COLORS.length] : 'var(--border-default)';
@@ -1144,7 +1144,7 @@ Tabs.evaluation = {
 
         // Right column: GT classes
         html += `<div style="width:${COL_W}px;">`;
-        html += `<div style="font-size:11px;font-weight:600;color:var(--text-02);margin-bottom:4px;">GT 클래스</div>`;
+        html += `<div style="font-size:11px;font-weight:600;color:var(--text-02);margin-bottom:4px;">${t('mapping.gt_cls')}</div>`;
         gtItems.forEach((g, i) => {
           const mapped = Object.values(conn).includes(g.id);
           const color = mapped ? COLORS[g.id % COLORS.length] : 'var(--border-default)';
@@ -1259,7 +1259,7 @@ Tabs.evaluation = {
         if (srcName === curName) return;
         connections[curName] = { ...connections[srcName] };
         renderPanel(curTab);
-        App.setStatus(`'${srcName}'의 매핑을 복사했습니다.`);
+        App.setStatus(t('mapping.copied', {name: srcName}));
       };
 
       // Clear
@@ -1306,7 +1306,7 @@ Tabs.evaluation = {
         document.getElementById('eval-prog').style.width = '100%';
         // 캐시 저장
         this._cachedHTML = document.getElementById('page-body').innerHTML;
-        App.setStatus('Evaluation complete');
+        App.setStatus(t('eval.complete'));
       }
     } catch(e) { setTimeout(() => this._poll(), 1000); }
   },
@@ -1315,7 +1315,7 @@ Tabs.evaluation = {
     if (!tb) return;
     tb.innerHTML = results.map((x, i) => {
       if (x.error) return '<tr><td>' + (x.name||'') + '</td><td colspan="6" style="color:var(--action-danger-05);">' + x.error + '</td></tr>';
-      const detBtn = x.detail ? '<button class="btn btn-ghost btn-sm" onclick="Tabs.evaluation.showDetail('+i+')">상세</button>' : '';
+      const detBtn = x.detail ? '<button class="btn btn-ghost btn-sm" onclick="Tabs.evaluation.showDetail('+i+')">' + t('detail') + '</button>' : '';
       return '<tr><td>'+(x.name||'')+'</td><td>'+(x.map50?.toFixed(4)||0)+'%</td><td>'+(x.map5095?.toFixed(4)||0)+'%</td><td>'+(x.precision?.toFixed(4)||0)+'%</td><td>'+(x.recall?.toFixed(4)||0)+'%</td><td>'+(x.f1?.toFixed(4)||0)+'%</td><td>'+detBtn+'</td></tr>';
     }).join('');
   },
@@ -1326,14 +1326,14 @@ Tabs.evaluation = {
   },
   showDetail(idx) {
     const r = this._lastResults[idx];
-    if (!r || !r.detail) { App.setStatus('상세 데이터 없음 (서버에서 detail 포함 필요)'); return; }
+    if (!r || !r.detail) { App.setStatus(t('eval.no_detail')); return; }
     const c = document.getElementById('eval-detail-container');
     const keys = Object.keys(r.detail).filter(k => k !== '__overall__').sort((a,b) => +a - +b);
     let rows = keys.map(cid => {
       const v = r.detail[cid];
       return '<tr><td>'+cid+'</td><td>'+(v.ap*100).toFixed(4)+'%</td><td>'+(v.precision*100).toFixed(4)+'%</td><td>'+(v.recall*100).toFixed(4)+'%</td><td>'+(v.f1*100).toFixed(4)+'%</td><td>'+v.tp+'</td><td>'+v.fp+'</td><td>'+v.fn+'</td></tr>';
     }).join('');
-    c.innerHTML = '<div class="card" style="padding:1.5rem;"><h3 class="text-heading-h3" style="margin-bottom:1rem;">클래스별 상세 — '+r.name+'</h3><div class="table-container"><table><thead><tr><th>Class</th><th>AP@50</th><th>Precision</th><th>Recall</th><th>F1</th><th>TP</th><th>FP</th><th>FN</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
+    c.innerHTML = '<div class="card" style="padding:1.5rem;"><h3 class="text-heading-h3" style="margin-bottom:1rem;">' + t('eval.per_class', {name: r.name}) + '</h3><div class="table-container"><table><thead><tr><th>Class</th><th>AP@50</th><th>Precision</th><th>Recall</th><th>F1</th><th>TP</th><th>FP</th><th>FN</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
   },
   exportCSV() { window.open('/api/evaluation/export-csv', '_blank'); },
 };
@@ -1347,7 +1347,7 @@ Tabs.analysis = {
         <div style="flex:1;display:flex;flex-direction:column;gap:1rem;">
           <div class="card" style="padding:1rem;">
             ${modelInput('ana-model')}
-            <div class="form-group"><label class="form-label">Model Type</label><select class="form-input input-normal" id="ana-type" style="width:auto;"></select></div>
+            <div class="form-group"><label class="form-label">${t('common.model_type')}</label><select class="form-input input-normal" id="ana-type" style="width:auto;"></select></div>
             <div class="form-group">
               <label class="form-label">Image</label>
               <div style="display:flex;gap:0.5rem;">
@@ -1377,8 +1377,8 @@ Tabs.analysis = {
   async run() {
     const model_path = document.getElementById('ana-model').value || G.model;
     const image_path = document.getElementById('ana-img').value;
-    if (!model_path||!image_path) { App.setStatus('Select model and image'); return; }
-    App.setStatus('Running inference analysis...');
+    if (!model_path||!image_path) { App.setStatus(t('common.select_model_img')); return; }
+    App.setStatus(t('viewer.starting'));
     try {
       const r = await API.post('/api/analysis/inference-analysis', {
         model_path, model_type: document.getElementById('ana-type').value, image_path, conf: 0.25
@@ -1388,7 +1388,7 @@ Tabs.analysis = {
       if (r.original_image) html += `<div style="text-align:center;"><div class="text-label" style="margin-bottom:0.25rem;">Original</div><img src="data:image/jpeg;base64,${r.original_image}" style="max-width:100%;max-height:250px;"></div>`;
       if (r.letterbox_image) html += `<div style="text-align:center;"><div class="text-label" style="margin-bottom:0.25rem;">Letterbox</div><img src="data:image/jpeg;base64,${r.letterbox_image}" style="max-width:100%;max-height:250px;"></div>`;
       if (r.detection_image) html += `<div style="text-align:center;"><div class="text-label" style="margin-bottom:0.25rem;">Detections</div><img src="data:image/jpeg;base64,${r.detection_image}" style="max-width:100%;max-height:250px;"></div>`;
-      document.getElementById('ana-panels').innerHTML = html || '<span class="text-muted">No results</span>';
+      document.getElementById('ana-panels').innerHTML = html || '<span class="text-muted">' + t('common.no_results') + '</span>';
       const tm = r.timing || {};
       document.getElementById('ana-stats').innerHTML = `Pre: ${tm.pre_ms||'—'}ms<br>Infer: ${tm.infer_ms||'—'}ms<br>Post: ${tm.post_ms||'—'}ms<br>Total: ${tm.total_ms||'—'}ms`;
       const dets = r.detections || [];
@@ -1466,8 +1466,8 @@ Tabs.explorer = {
   async load() {
     const img_dir = document.getElementById('exp-img')?.value || G.imgDir;
     const label_dir = document.getElementById('exp-lbl')?.value || G.lblDir;
-    if (!img_dir) { App.setStatus('Select image directory'); return; }
-    App.setStatus('Loading dataset...');
+    if (!img_dir) { App.setStatus(t('eval.select_images')); return; }
+    App.setStatus(t('viewer.loading'));
     const pbarWrap = document.getElementById('exp-pbar-wrap');
     if (pbarWrap) pbarWrap.style.display = 'block';
     try {
@@ -1565,7 +1565,7 @@ Tabs.explorer = {
         `<div class="card-flat" style="padding:0.5rem;font-size:11px;text-align:center;cursor:pointer;" ondblclick="Tabs.explorer._preview(${i})">
           <div style="font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${f.name}">${f.name}</div>
           <div class="text-secondary">${f.boxes} boxes</div>
-        </div>`).join('') || '<div class="text-secondary" style="grid-column:1/-1;text-align:center;padding:2rem;">No results</div>';
+        </div>`).join('') || '<div class="text-secondary" style="grid-column:1/-1;text-align:center;padding:2rem;">' + t('common.no_results') + '</div>';
       this._filteredFiles = filtered;
     } else if (mode === 'chart_box' || mode === 'chart_image') {
       gallery.style.display = 'block';
@@ -1730,7 +1730,7 @@ Tabs.splitter = {
     const img_dir = document.getElementById('split-img')?.value || G.imgDir;
     const label_dir = document.getElementById('split-lbl')?.value || G.lblDir;
     const output_dir = document.getElementById('split-out')?.value;
-    if (!img_dir || !output_dir) { App.setStatus('Select directories'); return; }
+    if (!img_dir || !output_dir) { App.setStatus(t('common.select_dirs')); return; }
     const train = parseFloat(document.getElementById('split-train')?.value || '0.7');
     const val = parseFloat(document.getElementById('split-val')?.value || '0.2');
     const test = parseFloat(document.getElementById('split-test')?.value || '0.1');

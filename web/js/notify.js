@@ -68,14 +68,13 @@ const Notify = {
     const panel = document.getElementById('notify-panel');
     if (!panel) return;
     const t = (k) => I18n.t(k);
-    const lang = I18n.getLang();
 
     if (!this._items.length) {
       panel.innerHTML = `<div class="notify-header">
-          <span class="text-action">${lang === 'ko' ? '알림' : 'Notifications'}</span>
+          <span class="text-action">${t('notify.title')}</span>
           <button class="btn btn-ghost btn-sm" onclick="Notify.closePanel()">${Icons.x(14)}</button>
         </div>
-        <div style="padding:2rem;text-align:center;" class="text-muted">${lang === 'ko' ? '알림이 없습니다' : 'No notifications'}</div>`;
+        <div style="padding:2rem;text-align:center;" class="text-muted">${t('notify.none')}</div>`;
       return;
     }
 
@@ -95,9 +94,9 @@ const Notify = {
     }).join('');
 
     panel.innerHTML = `<div class="notify-header">
-        <span class="text-action">${lang === 'ko' ? '알림' : 'Notifications'} (${this._items.length})</span>
+        <span class="text-action">${t('notify.title')} (${this._items.length})</span>
         <div style="display:flex;gap:0.25rem;">
-          <button class="btn btn-ghost btn-sm" onclick="Notify.clear()">${lang === 'ko' ? '모두 삭제' : 'Clear all'}</button>
+          <button class="btn btn-ghost btn-sm" onclick="Notify.clear()">${t('notify.clear')}</button>
           <button class="btn btn-ghost btn-sm" onclick="Notify.closePanel()">${Icons.x(14)}</button>
         </div>
       </div>

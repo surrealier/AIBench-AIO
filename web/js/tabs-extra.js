@@ -59,7 +59,7 @@ async function _loadModelTypes() {
   } catch(e) { return {yolo:'YOLO'}; }
 }
 function _modelTypeSelect(id) {
-  return `<div class="form-group"><label class="form-label">Model Type</label><select class="form-input input-normal" id="${id}" style="width:auto;"></select></div>`;
+  return `<div class="form-group"><label class="form-label">${t('common.model_type')}</label><select class="form-input input-normal" id="${id}" style="width:auto;"></select></div>`;
 }
 async function _fillModelTypeSelect(id) {
   const types = await _loadModelTypes();
@@ -75,16 +75,16 @@ Tabs['model-compare'] = {
     return `
       <div style="display:flex;flex-direction:column;gap:1.5rem;">
         <div class="card" style="padding:1.5rem;">
-          <h3 class="text-heading-h3" style="margin-bottom:1rem;display:flex;align-items:center;">Setup</h3>
+          <h3 class="text-heading-h3" style="margin-bottom:1rem;display:flex;align-items:center;">${t('cmp.setup')}</h3>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
             <div>
-              <div class="form-group"><label class="form-label">Model A</label>
+              <div class="form-group"><label class="form-label">${t('cmp.model_a')}</label>
                 <div style="display:flex;gap:0.5rem;"><input type="text" class="form-input input-normal" style="flex:1;" readonly id="cmp-a" value="${G.model}"><button class="btn btn-secondary btn-sm" onclick="pickModel('cmp-a')">${t('browse')}</button></div>
               </div>
               ${_modelTypeSelect('cmp-type-a')}
             </div>
             <div>
-              <div class="form-group"><label class="form-label">Model B</label>
+              <div class="form-group"><label class="form-label">${t('cmp.model_b')}</label>
                 <div style="display:flex;gap:0.5rem;"><input type="text" class="form-input input-normal" style="flex:1;" readonly id="cmp-b"><button class="btn btn-secondary btn-sm" onclick="pickModel('cmp-b')">${t('browse')}</button></div>
               </div>
               ${_modelTypeSelect('cmp-type-b')}
@@ -103,8 +103,8 @@ Tabs['model-compare'] = {
           <div style="text-align:center;margin-top:0.25rem;" class="text-secondary" id="cmp-counter">0 / 0</div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
-          <div class="card" style="padding:1rem;min-height:300px;display:flex;flex-direction:column;align-items:center;justify-content:center;" id="cmp-panel-a"><span class="text-muted">Model A</span></div>
-          <div class="card" style="padding:1rem;min-height:300px;display:flex;flex-direction:column;align-items:center;justify-content:center;" id="cmp-panel-b"><span class="text-muted">Model B</span></div>
+          <div class="card" style="padding:1rem;min-height:300px;display:flex;flex-direction:column;align-items:center;justify-content:center;" id="cmp-panel-a"><span class="text-muted">${t('cmp.model_a')}</span></div>
+          <div class="card" style="padding:1rem;min-height:300px;display:flex;flex-direction:column;align-items:center;justify-content:center;" id="cmp-panel-b"><span class="text-muted">${t('cmp.model_b')}</span></div>
         </div>
       </div>`;
   },
@@ -113,7 +113,7 @@ Tabs['model-compare'] = {
   async run() {
     const a = document.getElementById('cmp-a').value, b = document.getElementById('cmp-b').value;
     const imgDir = document.getElementById('cmp-img').value || G.imgDir;
-    if (!a||!b||!imgDir) { App.setStatus('Select both models and image directory'); return; }
+    if (!a||!b||!imgDir) { App.setStatus(t('cmp.select_both')); return; }
     document.getElementById('cmp-stop').disabled = false;
     document.getElementById('cmp-prog').style.width = '0%';
     try {
@@ -139,7 +139,7 @@ Tabs['model-compare'] = {
         document.getElementById('cmp-stop').disabled = true;
         document.getElementById('cmp-prog').style.width = '100%';
         if (s.results) { this._results = s.results; this._idx = 0; const sl = document.getElementById('cmp-slider'); sl.max = s.results.length-1; sl.disabled = false; this._showAt(0); }
-        App.setStatus('Compare complete');
+        App.setStatus(t('cmp.complete'));
       } else setTimeout(()=>this._poll(), 500);
     } catch(e) { setTimeout(()=>this._poll(), 1000); }
   },
@@ -150,15 +150,15 @@ Tabs['model-compare'] = {
     // 이미지를 개별 API로 로드 (메모리 최적화)
     const pa = document.getElementById('cmp-panel-a');
     const pb = document.getElementById('cmp-panel-b');
-    pa.innerHTML = `<span class="text-muted">Loading...</span>`;
-    pb.innerHTML = `<span class="text-muted">Loading...</span>`;
+    pa.innerHTML = `<span class="text-muted">${t('cmp.loading')}</span>`;
+    pb.innerHTML = `<span class="text-muted">${t('cmp.loading')}</span>`;
     API.get(`/api/analysis/model-compare/image/${i}/a`).then(d => {
       if (d.image) pa.innerHTML = `<img src="data:image/jpeg;base64,${d.image}" style="max-width:100%;max-height:400px;"><div class="text-secondary" style="margin-top:0.5rem;">Boxes: ${r.count_a} | ${r.ms_a}ms</div>`;
-      else pa.innerHTML = `<span class="text-muted">Image not available</span>`;
+      else pa.innerHTML = `<span class="text-muted">${t('cmp.not_available')}</span>`;
     });
     API.get(`/api/analysis/model-compare/image/${i}/b`).then(d => {
       if (d.image) pb.innerHTML = `<img src="data:image/jpeg;base64,${d.image}" style="max-width:100%;max-height:400px;"><div class="text-secondary" style="margin-top:0.5rem;">Boxes: ${r.count_b} | ${r.ms_b}ms</div>`;
-      else pb.innerHTML = `<span class="text-muted">Image not available</span>`;
+      else pb.innerHTML = `<span class="text-muted">${t('cmp.not_available')}</span>`;
     });
   }
 };
@@ -170,13 +170,13 @@ Tabs['error-analyzer'] = {
     return `
       <div style="display:flex;flex-direction:column;gap:1.5rem;">
         <div class="card" style="padding:1.5rem;">
-          <h3 class="text-heading-h3" style="margin-bottom:1rem;display:flex;align-items:center;">FP/FN Analysis</h3>
+          <h3 class="text-heading-h3" style="margin-bottom:1rem;display:flex;align-items:center;">${t('ea.title')}</h3>
           ${modelInput('ea-model')}
           ${_modelTypeSelect('ea-type')}
           ${imgDirInput('ea-img')}
           ${lblDirInput('ea-lbl')}
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;margin-top:0.75rem;">
-            <div class="form-group"><label class="form-label">IoU Threshold</label><input type="number" class="form-input input-normal" id="ea-iou" value="0.5" min="0.1" max="0.9" step="0.05"></div>
+            <div class="form-group"><label class="form-label">${t('ea.iou_threshold')}</label><input type="number" class="form-input input-normal" id="ea-iou" value="0.5" min="0.1" max="0.9" step="0.05"></div>
           </div>
           <div style="display:flex;gap:0.5rem;margin-top:1rem;">
             <button class="btn btn-primary" onclick="Tabs['error-analyzer'].run()">${t('run')}</button>
@@ -188,7 +188,7 @@ Tabs['error-analyzer'] = {
         <div class="card" style="padding:1.5rem;">
           <h3 class="text-heading-h3" style="margin-bottom:1rem;">${t('bench.results')}</h3>
           <div class="table-container"><table><thead><tr><th>Type</th><th>Count</th><th>Small</th><th>Medium</th><th>Large</th><th>Top</th><th>Center</th><th>Bottom</th></tr></thead>
-          <tbody id="ea-results"><tr><td colspan="8" class="text-secondary" style="text-align:center;padding:2rem;">Run analysis to see FP/FN breakdown</td></tr></tbody></table></div>
+          <tbody id="ea-results"><tr><td colspan="8" class="text-secondary" style="text-align:center;padding:2rem;">${t('ea.run_hint')}</td></tr></tbody></table></div>
         </div>
       </div>`;
   },
@@ -198,7 +198,7 @@ Tabs['error-analyzer'] = {
     const model_path = document.getElementById('ea-model').value || G.model;
     const img_dir = document.getElementById('ea-img').value || G.imgDir;
     const label_dir = document.getElementById('ea-lbl').value || G.lblDir;
-    if (!model_path||!img_dir) { App.setStatus('Select model and image directory'); return; }
+    if (!model_path||!img_dir) { App.setStatus(t('common.select_model_img')); return; }
     document.getElementById('ea-stop').disabled = false;
     document.getElementById('ea-prog').style.width = '0%';
     try {
@@ -228,7 +228,7 @@ Tabs['error-analyzer'] = {
             `<tr><td>FP (False Positive)</td><td>${fp.count||0}</td><td>${fp.small||0}</td><td>${fp.medium||0}</td><td>${fp.large||0}</td><td>${fp.top||0}</td><td>${fp.center||0}</td><td>${fp.bottom||0}</td></tr>` +
             `<tr><td>FN (False Negative)</td><td>${fn.count||0}</td><td>${fn.small||0}</td><td>${fn.medium||0}</td><td>${fn.large||0}</td><td>${fn.top||0}</td><td>${fn.center||0}</td><td>${fn.bottom||0}</td></tr>`;
         }
-        App.setStatus('Error analysis complete');
+        App.setStatus(t('ea.complete'));
       } else setTimeout(()=>this._poll(), 500);
     } catch(e) { setTimeout(()=>this._poll(), 1000); }
   }
@@ -241,13 +241,13 @@ Tabs['conf-optimizer'] = {
     return `
       <div style="display:flex;flex-direction:column;gap:1.5rem;">
         <div class="card" style="padding:1.5rem;">
-          <h3 class="text-heading-h3" style="margin-bottom:1rem;display:flex;align-items:center;">Confidence Threshold Optimizer</h3>
+          <h3 class="text-heading-h3" style="margin-bottom:1rem;display:flex;align-items:center;">${t('co.title')}</h3>
           ${modelInput('co-model')}
           ${_modelTypeSelect('co-type')}
           ${imgDirInput('co-img')}
           ${lblDirInput('co-lbl')}
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;margin-top:0.75rem;">
-            <div class="form-group"><label class="form-label">Step</label><input type="number" class="form-input input-normal" id="co-step" value="0.05" min="0.01" max="0.1" step="0.01"></div>
+            <div class="form-group"><label class="form-label">${t('co.step')}</label><input type="number" class="form-input input-normal" id="co-step" value="0.05" min="0.01" max="0.1" step="0.01"></div>
           </div>
           <div style="display:flex;gap:0.5rem;margin-top:1rem;">
             <button class="btn btn-primary" onclick="Tabs['conf-optimizer'].run()">${t('run')}</button>
@@ -259,7 +259,7 @@ Tabs['conf-optimizer'] = {
         <div class="card" style="padding:1.5rem;">
           <h3 class="text-heading-h3" style="margin-bottom:1rem;">${t('bench.results')}</h3>
           <div class="table-container"><table><thead><tr><th>Class</th><th>Best Threshold</th><th>F1</th><th>Precision</th><th>Recall</th><th></th></tr></thead>
-          <tbody id="co-results"><tr><td colspan="6" class="text-secondary" style="text-align:center;padding:2rem;">Run optimizer to find best thresholds</td></tr></tbody></table></div>
+          <tbody id="co-results"><tr><td colspan="6" class="text-secondary" style="text-align:center;padding:2rem;">${t('co.run_hint')}</td></tr></tbody></table></div>
         </div>
       </div>`;
   },
@@ -269,7 +269,7 @@ Tabs['conf-optimizer'] = {
     const model_path = document.getElementById('co-model').value || G.model;
     const img_dir = document.getElementById('co-img').value || G.imgDir;
     const label_dir = document.getElementById('co-lbl').value || G.lblDir;
-    if (!model_path||!img_dir) { App.setStatus('Select model and image directory'); return; }
+    if (!model_path||!img_dir) { App.setStatus(t('common.select_model_img')); return; }
     document.getElementById('co-stop').disabled = false;
     document.getElementById('co-prog').style.width = '0%';
     try {
@@ -298,7 +298,7 @@ Tabs['conf-optimizer'] = {
             `<tr><td>${r.class_name||r.class_id}</td><td>${r.best_threshold}</td><td>${r.best_f1?.toFixed(4)}</td><td>${r.precision?.toFixed(4)}</td><td>${r.recall?.toFixed(4)}</td><td><button class="btn btn-ghost btn-sm" onclick="Tabs['conf-optimizer']._showPR(${i})">📈</button></td></tr>`
           ).join('');
         }
-        App.setStatus('Conf optimization complete');
+        App.setStatus(t('co.complete'));
       } else setTimeout(()=>this._poll(), 500);
     } catch(e) { setTimeout(()=>this._poll(), 1000); }
   },
@@ -353,12 +353,12 @@ Tabs['embedding-viewer'] = {
     return `
       <div style="display:flex;flex-direction:column;gap:1.5rem;">
         <div class="card" style="padding:1.5rem;">
-          <h3 class="text-heading-h3" style="margin-bottom:1rem;display:flex;align-items:center;">Embedding Visualization</h3>
+          <h3 class="text-heading-h3" style="margin-bottom:1rem;display:flex;align-items:center;">${t('ev.title')}</h3>
           ${modelInput('ev-model')}
-          <div class="text-secondary" style="font-size:10px;margin-top:-0.5rem;margin-bottom:0.5rem;">💡 모델 타입 선택 불필요 — ONNX 세션을 직접 로드하여 임베딩을 추출합니다.</div>
+          <div class="text-secondary" style="font-size:10px;margin-top:-0.5rem;margin-bottom:0.5rem;">${t('ev.model_hint')}</div>
           ${imgDirInput('ev-img')}
           <div class="form-group" style="margin-top:0.75rem;">
-            <label class="form-label">Method</label>
+            <label class="form-label">${t('ev.method')}</label>
             <select class="form-input input-normal" id="ev-method" style="width:auto;"><option>t-SNE</option><option>UMAP</option><option>PCA</option></select>
           </div>
           <div style="display:flex;gap:0.5rem;margin-top:1rem;">
@@ -369,7 +369,7 @@ Tabs['embedding-viewer'] = {
             <span class="text-secondary" id="ev-status" style="margin-top:0.25rem;display:block;">${t('ready')}</span></div>
         </div>
         <div class="card" style="padding:1.5rem;min-height:400px;display:flex;align-items:center;justify-content:center;" id="ev-plot">
-          <span class="text-muted">2D scatter plot will appear here</span>
+          <span class="text-muted">${t('ev.plot_hint')}</span>
         </div>
       </div>`;
   },
@@ -377,10 +377,10 @@ Tabs['embedding-viewer'] = {
   async run() {
     const model_path = document.getElementById('ev-model').value || G.model;
     const img_dir = document.getElementById('ev-img').value || G.imgDir;
-    if (!model_path||!img_dir) { App.setStatus('Select model and image directory'); return; }
+    if (!model_path||!img_dir) { App.setStatus(t('common.select_model_img')); return; }
     document.getElementById('ev-stop').disabled = false;
     document.getElementById('ev-prog').style.width = '0%';
-    document.getElementById('ev-plot').innerHTML = '<span class="text-muted">Computing...</span>';
+    document.getElementById('ev-plot').innerHTML = '<span class="text-muted">' + t('ev.computing') + '</span>';
     try {
       const r = await API.post('/api/analysis/embedding-viewer', {
         model_path, img_dir, method: document.getElementById('ev-method').value
@@ -401,7 +401,7 @@ Tabs['embedding-viewer'] = {
         document.getElementById('ev-stop').disabled = true;
         document.getElementById('ev-prog').style.width = '100%';
         if (s.image) document.getElementById('ev-plot').innerHTML = `<img src="data:image/png;base64,${s.image}" style="max-width:100%;max-height:600px;">`;
-        App.setStatus('Embedding visualization complete');
+        App.setStatus(t('ev.complete'));
       } else setTimeout(()=>this._poll(), 500);
     } catch(e) { setTimeout(()=>this._poll(), 1000); }
   }
@@ -414,12 +414,12 @@ Tabs.segmentation = {
     return `
       <div style="max-width:640px;display:flex;flex-direction:column;gap:1.5rem;">
         <div class="card" style="padding:1.5rem;">
-          <h3 class="text-heading-h3" style="margin-bottom:1rem;display:flex;align-items:center;">Segmentation Evaluation<a href="https://github.com/ultralytics/assets/releases/download/v8.3.0/yolo11n-seg.onnx" class="btn btn-ghost btn-sm" style="margin-left:auto;" target="_blank">📥 YOLO11n-seg ONNX</a></h3>
+          <h3 class="text-heading-h3" style="margin-bottom:1rem;display:flex;align-items:center;">${t('seg.title')}<a href="https://github.com/ultralytics/assets/releases/download/v8.3.0/yolo11n-seg.onnx" class="btn btn-ghost btn-sm" style="margin-left:auto;" target="_blank">📥 YOLO11n-seg ONNX</a></h3>
           ${modelInput('seg-model')}
           ${imgDirInput('seg-img')}
           ${lblDirInput('seg-lbl')}
           <button class="btn btn-primary" style="margin-top:1rem;" onclick="Tabs.segmentation.run()">${t('run')}</button>
-          <button class="btn btn-secondary btn-sm" style="margin-top:1rem;margin-left:0.5rem;" onclick="Tabs.segmentation._showDetail()">📋 상세</button>
+          <button class="btn btn-secondary btn-sm" style="margin-top:1rem;margin-left:0.5rem;" onclick="Tabs.segmentation._showDetail()">${t('seg.detail')}</button>
         </div>
         <div>
           <div class="progress-track"><div class="progress-fill" id="seg-prog" style="width:0%"></div></div>
@@ -428,7 +428,7 @@ Tabs.segmentation = {
         <div class="card" style="padding:1.5rem;">
           <h3 class="text-heading-h3" style="margin-bottom:1rem;">${t('bench.results')}</h3>
           <div class="table-container"><table><thead><tr><th>Class</th><th>IoU</th><th>Dice</th><th>Images</th></tr></thead>
-          <tbody id="seg-results"><tr><td colspan="4" class="text-secondary" style="text-align:center;padding:2rem;">Run evaluation to see mIoU/Dice</td></tr></tbody></table></div>
+          <tbody id="seg-results"><tr><td colspan="4" class="text-secondary" style="text-align:center;padding:2rem;">${t('seg.run_hint')}</td></tr></tbody></table></div>
         </div>
       </div>`;
   },
@@ -436,7 +436,7 @@ Tabs.segmentation = {
     const model_path = document.getElementById('seg-model')?.value || G.model;
     const img_dir = document.getElementById('seg-img')?.value || G.imgDir;
     const label_dir = document.getElementById('seg-lbl')?.value || G.lblDir;
-    if (!model_path || !img_dir) { App.setStatus('Select model and image directory'); return; }
+    if (!model_path || !img_dir) { App.setStatus(t('common.select_model_img')); return; }
     try {
       const r = await API.post('/api/segmentation/run', { model_path, img_dir, label_dir });
       if (r.error) { App.setStatus('Error: ' + r.error); return; }
@@ -468,20 +468,17 @@ Tabs.segmentation = {
       const detail = s.detail || [];
       let html = '<div style="font-size:12px;">';
       // Summary table
-      html += '<h4 style="margin-bottom:0.5rem;">📊 Per-Class Summary</h4>';
+      html += '<h4 style="margin-bottom:0.5rem;">' + t('seg.per_class') + '</h4>';
       html += tbody.parentElement.parentElement.outerHTML;
-      // Processing flow
-      html += '<h4 style="margin:1rem 0 0.5rem;">🔄 처리 흐름</h4>';
+      html += '<h4 style="margin:1rem 0 0.5rem;">' + t('seg.flow') + '</h4>';
       html += '<div style="display:flex;gap:0.5rem;align-items:center;font-size:11px;color:#aaa;margin-bottom:1rem;">';
-      html += '<span style="padding:4px 8px;background:#333;border-radius:4px;">원본 이미지</span>→';
-      html += '<span style="padding:4px 8px;background:#333;border-radius:4px;">전처리 (resize)</span>→';
-      html += '<span style="padding:4px 8px;background:#333;border-radius:4px;">모델 추론</span>→';
-      html += '<span style="padding:4px 8px;background:#333;border-radius:4px;">argmax → 클래스 마스크</span>→';
-      html += '<span style="padding:4px 8px;background:#333;border-radius:4px;">GT 비교 (IoU/Dice)</span>';
+      t('seg.flow_steps').split(',').forEach((step, i) => {
+        if (i > 0) html += '→';
+        html += '<span style="padding:4px 8px;background:#333;border-radius:4px;">' + step + '</span>';
+      });
       html += '</div>';
-      // Per-image detail with sample overlays
       if (detail.length) {
-        html += '<h4 style="margin:1rem 0 0.5rem;">🖼️ Per-Image Results</h4>';
+        html += '<h4 style="margin:1rem 0 0.5rem;">' + t('seg.per_image') + '</h4>';
         // Sample overlays
         const withOverlay = detail.filter(d => d.overlay);
         if (withOverlay.length) {
@@ -497,10 +494,10 @@ Tabs.segmentation = {
           html += `<tr ${color}><td>${d.file}</td><td>${d.iou}</td><td>${d.classes}</td></tr>`;
         }
         html += '</tbody></table>';
-        if (detail.length > 100) html += `<div style="color:#888;margin-top:0.5rem;">... ${detail.length - 100}개 더</div>`;
+        if (detail.length > 100) html += `<div style="color:#888;margin-top:0.5rem;">${t('seg.more', {n: detail.length - 100})}</div>`;
       }
       html += '</div>';
-      showDetailModal('Segmentation Evaluation — 상세 결과', html);
+      showDetailModal(t('seg.detail_title'), html);
     });
   }
 };
@@ -512,16 +509,16 @@ Tabs.clip = {
     return `
       <div style="max-width:640px;display:flex;flex-direction:column;gap:1.5rem;">
         <div class="card" style="padding:1.5rem;">
-          <h3 class="text-heading-h3" style="margin-bottom:1rem;display:flex;align-items:center;">CLIP Zero-Shot<a href="https://huggingface.co/Xenova/clip-vit-base-patch32/tree/main/onnx" target="_blank" class="btn btn-ghost btn-sm" style="margin-left:auto;">📥 CLIP ONNX</a></h3>
+          <h3 class="text-heading-h3" style="margin-bottom:1rem;display:flex;align-items:center;">${t('clip.title')}<a href="https://huggingface.co/Xenova/clip-vit-base-patch32/tree/main/onnx" target="_blank" class="btn btn-ghost btn-sm" style="margin-left:auto;">📥 CLIP ONNX</a></h3>
           <div class="form-group">
-            <label class="form-label">Image Encoder</label>
+            <label class="form-label">${t('clip.img_enc')}</label>
             <div style="display:flex;gap:0.5rem;">
               <input type="text" class="form-input input-normal" style="flex:1;" readonly id="clip-img-enc">
               <button class="btn btn-secondary btn-sm" onclick="pickFile('clip-img-enc','ONNX (*.onnx)')">${t('browse')}</button>
             </div>
           </div>
           <div class="form-group">
-            <label class="form-label">Text Encoder</label>
+            <label class="form-label">${t('clip.txt_enc')}</label>
             <div style="display:flex;gap:0.5rem;">
               <input type="text" class="form-input input-normal" style="flex:1;" readonly id="clip-txt-enc">
               <button class="btn btn-secondary btn-sm" onclick="pickFile('clip-txt-enc','ONNX (*.onnx)')">${t('browse')}</button>
@@ -529,8 +526,8 @@ Tabs.clip = {
           </div>
           ${imgDirInput('clip-img')}
           <div class="form-group" style="margin-top:0.75rem;">
-            <label class="form-label">Class Labels (comma-separated)</label>
-            <input type="text" class="form-input input-normal" placeholder="cat, dog, bird, car..." id="clip-labels">
+            <label class="form-label">${t('clip.labels')}</label>
+            <input type="text" class="form-input input-normal" placeholder="${t('clip.labels_ph')}" id="clip-labels">
           </div>
           <button class="btn btn-primary" style="margin-top:1rem;" id="clip-run-btn" onclick="Tabs.clip.run()">${t('run')}</button>
         </div>
@@ -551,7 +548,7 @@ Tabs.clip = {
     const imgDir = document.getElementById('clip-img')?.value || G.imgDir;
     const labels = document.getElementById('clip-labels')?.value;
     if (!imgEnc || !txtEnc || !imgDir || !labels) {
-      App.setStatus('Please fill all fields'); return;
+      App.setStatus(t('clip.fill_all')); return;
     }
     try {
       const r = await API.post('/api/clip/run', {
@@ -582,7 +579,7 @@ Tabs.clip = {
         if (this._detail && this._detail.length) {
           const btn = document.getElementById('clip-run-btn');
           if (btn) btn.insertAdjacentHTML('afterend',
-            ' <button class="btn btn-secondary btn-sm" onclick="Tabs.clip._showDetail()">📋 상세 보기</button>');
+            ' <button class="btn btn-secondary btn-sm" onclick="Tabs.clip._showDetail()">' + t('clip.detail_btn') + '</button>');
         }
       }
     } catch(e) { App.setStatus('Error: ' + e.message, e.stack); }
@@ -592,15 +589,15 @@ Tabs.clip = {
     const d = this._detail;
     if (!d.length) return;
     const wrong = d.filter(x => !x.correct);
-    let html = `<div style="margin-bottom:1rem;"><b>총 ${d.length}장</b> | 정답 ${d.filter(x=>x.correct).length} | <span style="color:var(--danger);">오답 ${wrong.length}</span></div>`;
+    let html = `<div style="margin-bottom:1rem;"><b>${t('clip.total', {n: d.length})}</b> | ${t('clip.correct')} ${d.filter(x=>x.correct).length} | <span style="color:var(--danger);">${t('clip.wrong')} ${wrong.length}</span></div>`;
     html += '<div style="max-height:400px;overflow-y:auto;"><table style="width:100%;font-size:12px;"><thead><tr><th>File</th><th>GT</th><th>Pred</th><th>Score</th><th>Top-3</th></tr></thead><tbody>';
     for (const r of d.slice(0, 200)) {
       const color = r.correct ? '' : 'style="background:rgba(255,0,0,0.08);"';
       html += `<tr ${color}><td>${r.file}</td><td>${r.gt}</td><td>${r.pred}</td><td>${r.score}</td><td>${r.top3.map(t=>t[0]+':'+t[1]).join(', ')}</td></tr>`;
     }
     html += '</tbody></table></div>';
-    if (d.length > 200) html += `<div class="text-secondary" style="margin-top:0.5rem;">... ${d.length - 200}개 더</div>`;
-    showDetailModal('CLIP Zero-Shot — 상세 결과', html);
+    if (d.length > 200) html += `<div class="text-secondary" style="margin-top:0.5rem;">${t('seg.more', {n: d.length - 200})}</div>`;
+    showDetailModal(t('clip.detail_title'), html);
   }
 };
 
@@ -611,16 +608,15 @@ Tabs.embedder = {
     return `
       <div style="max-width:640px;display:flex;flex-direction:column;gap:1.5rem;">
         <div class="card" style="padding:1.5rem;">
-          <h3 class="text-heading-h3" style="margin-bottom:1rem;display:flex;align-items:center;">Embedder Evaluation<a href="https://huggingface.co/immich-app/ViT-B-32__openai/tree/main" target="_blank" class="btn btn-ghost btn-sm" style="margin-left:auto;">📥 Embedder ONNX</a></h3>
+          <h3 class="text-heading-h3" style="margin-bottom:1rem;display:flex;align-items:center;">${t('emb.title')}<a href="https://huggingface.co/immich-app/ViT-B-32__openai/tree/main" target="_blank" class="btn btn-ghost btn-sm" style="margin-left:auto;">📥 Embedder ONNX</a></h3>
           ${modelInput('emb-model')}
           ${imgDirInput('emb-img')}
           <div class="form-group" style="margin-top:0.75rem;">
-            <label class="form-label">Top-K</label>
-            <input type="number" class="form-input input-normal" id="emb-k" value="5" min="1" max="100">
+            <label class="form-label">${t('emb.topk')}</label>            <input type="number" class="form-input input-normal" id="emb-k" value="5" min="1" max="100">
           </div>
           <button class="btn btn-primary" style="margin-top:1rem;" onclick="Tabs.embedder.run()">${t('run')}</button>
-          <button class="btn btn-secondary btn-sm" style="margin-top:1rem;margin-left:0.5rem;" onclick="Tabs.embedder._showDetail()">📋 상세</button>
-          <button class="btn btn-secondary btn-sm" style="margin-top:1rem;margin-left:0.5rem;" onclick="Tabs.embedder._compareImages()">🔗 이미지 비교</button>
+          <button class="btn btn-secondary btn-sm" style="margin-top:1rem;margin-left:0.5rem;" onclick="Tabs.embedder._showDetail()">${t('emb.detail_btn')}</button>
+          <button class="btn btn-secondary btn-sm" style="margin-top:1rem;margin-left:0.5rem;" onclick="Tabs.embedder._compareImages()">${t('emb.compare_btn')}</button>
         </div>
         <div>
           <div class="progress-track"><div class="progress-fill" id="emb-prog" style="width:0%"></div></div>
@@ -637,7 +633,7 @@ Tabs.embedder = {
     const modelPath = document.getElementById('emb-model')?.value || G.model;
     const imgDir = document.getElementById('emb-img')?.value || G.imgDir;
     const topK = +(document.getElementById('emb-k')?.value || 5);
-    if (!modelPath || !imgDir) { App.setStatus('Please select model and image directory'); return; }
+    if (!modelPath || !imgDir) { App.setStatus(t('common.select_model_img')); return; }
     try {
       const r = await API.post('/api/embedder/run', {
         model_path: modelPath, img_dir: imgDir, top_k: topK
@@ -671,21 +667,17 @@ Tabs.embedder = {
       const detail = s.detail || [];
       let html = '<div style="font-size:12px;">';
       // Summary
-      html += '<h4 style="margin-bottom:0.5rem;">📊 Per-Class Summary</h4>';
+      html += '<h4 style="margin-bottom:0.5rem;">' + t('seg.per_class') + '</h4>';
       html += tbody.parentElement.parentElement.outerHTML;
-      // Processing flow
-      html += '<h4 style="margin:1rem 0 0.5rem;">🔄 처리 흐름</h4>';
+      html += '<h4 style="margin:1rem 0 0.5rem;">' + t('emb.flow') + '</h4>';
       html += '<div style="display:flex;gap:0.5rem;align-items:center;font-size:11px;color:#aaa;margin-bottom:1rem;">';
-      html += '<span style="padding:4px 8px;background:#333;border-radius:4px;">이미지 로드</span>→';
-      html += '<span style="padding:4px 8px;background:#333;border-radius:4px;">전처리</span>→';
-      html += '<span style="padding:4px 8px;background:#333;border-radius:4px;">모델 → 벡터 추출</span>→';
-      html += '<span style="padding:4px 8px;background:#333;border-radius:4px;">L2 정규화</span>→';
-      html += '<span style="padding:4px 8px;background:#333;border-radius:4px;">코사인 유사도 계산</span>→';
-      html += '<span style="padding:4px 8px;background:#333;border-radius:4px;">Leave-one-out Retrieval</span>';
+      t('emb.flow_steps').split(',').forEach((step, i) => {
+        if (i > 0) html += '→';
+        html += '<span style="padding:4px 8px;background:#333;border-radius:4px;">' + step + '</span>';
+      });
       html += '</div>';
-      // Per-image retrieval detail
       if (detail.length) {
-        html += '<h4 style="margin:1rem 0 0.5rem;">🔍 Per-Image Retrieval</h4>';
+        html += '<h4 style="margin:1rem 0 0.5rem;">' + t('emb.per_image') + '</h4>';
         html += '<table style="width:100%;"><thead><tr><th>Query</th><th>GT</th><th>Top-1</th><th>Top-1 File</th><th>Sim</th><th>✓</th><th>Top-3</th></tr></thead><tbody>';
         for (const d of detail.slice(0, 100)) {
           const color = d.correct ? '' : 'style="background:rgba(255,0,0,0.08);"';
@@ -693,19 +685,19 @@ Tabs.embedder = {
           html += `<tr ${color}><td>${d.file}</td><td>${d.gt}</td><td>${d.top1}</td><td>${d.top1_file}</td><td>${d.top1_sim}</td><td>${d.correct?'✓':'✗'}</td><td style="font-size:10px;">${top3}</td></tr>`;
         }
         html += '</tbody></table>';
-        if (detail.length > 100) html += `<div style="color:#888;margin-top:0.5rem;">... ${detail.length - 100}개 더</div>`;
+        if (detail.length > 100) html += `<div style="color:#888;margin-top:0.5rem;">${t('seg.more', {n: detail.length - 100})}</div>`;
       }
       html += '</div>';
-      showDetailModal('Embedder Evaluation — 상세 결과', html);
+      showDetailModal(t('emb.detail_title'), html);
     });
   },
   async _compareImages() {
     const modelPath = document.getElementById('emb-model')?.value || G.model;
-    if (!modelPath) { App.setStatus('Select model first'); return; }
+    if (!modelPath) { App.setStatus(t('emb.select_model')); return; }
     try {
       const r = await API.post('/api/fs/select-multi', { filters: 'Images (*.jpg *.jpeg *.png *.bmp)' });
-      if (!r.paths || r.paths.length < 2) { App.setStatus('Select at least 2 images'); return; }
-      App.setStatus('Computing similarity...');
+      if (!r.paths || r.paths.length < 2) { App.setStatus(t('emb.select_2_images')); return; }
+      App.setStatus(t('emb.computing'));
       const res = await API.post('/api/embedder/compare', { model_path: modelPath, img_paths: r.paths });
       if (res.error) { App.setStatus('Error: ' + res.error); return; }
       const names = res.names;
@@ -722,8 +714,8 @@ Tabs.embedder = {
         html += '</tr>';
       });
       html += '</tbody></table></div>';
-      showDetailModal(`Embedding Similarity — ${names.length} images`, html);
-      App.setStatus('Comparison complete');
+      showDetailModal(t('emb.sim_title', {n: names.length}), html);
+      App.setStatus(t('emb.compare_done'));
     } catch(e) { App.setStatus('Error: ' + e.message); }
   }
 };
@@ -735,7 +727,7 @@ Tabs.converter = {
     return `
       <div style="max-width:640px;display:flex;flex-direction:column;gap:1.5rem;">
         <div class="card" style="padding:1.5rem;">
-          <h3 class="text-heading-h3" style="margin-bottom:1rem;display:flex;align-items:center;">Format Converter</h3>
+          <h3 class="text-heading-h3" style="margin-bottom:1rem;display:flex;align-items:center;">${t('conv.title')}</h3>
           ${lblDirInput('conv-in')}
           ${outDirInput('conv-out')}
           <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:0.5rem;align-items:center;margin-top:1rem;">
@@ -752,7 +744,7 @@ Tabs.converter = {
   async run() {
     const input_dir = document.getElementById('conv-in')?.value || G.lblDir;
     const output_dir = document.getElementById('conv-out')?.value;
-    if (!input_dir || !output_dir) { App.setStatus('Select directories'); return; }
+    if (!input_dir || !output_dir) { App.setStatus(t('common.select_dirs')); return; }
     try {
       const r = await API.post('/api/data/converter', {
         input_dir, output_dir,
@@ -784,23 +776,23 @@ Tabs.remapper = {
     return `
       <div style="max-width:640px;display:flex;flex-direction:column;gap:1.5rem;">
         <div class="card" style="padding:1.5rem;">
-          <h3 class="text-heading-h3" style="margin-bottom:1rem;display:flex;align-items:center;">Class Remapper</h3>
+          <h3 class="text-heading-h3" style="margin-bottom:1rem;display:flex;align-items:center;">${t('remap.title')}</h3>
           ${lblDirInput('remap-lbl')}
           ${outDirInput('remap-out')}
           <div class="form-group" style="margin-top:0.75rem;">
-            <label class="form-label">Mapping (old:new, comma-separated)</label>
-            <input type="text" class="form-input input-normal" placeholder="0:1, 2:0, 3:1" id="remap-map">
+            <label class="form-label">${t('remap.mapping')}</label>
+            <input type="text" class="form-input input-normal" placeholder="${t('remap.mapping_ph')}" id="remap-map">
           </div>
-          <label style="display:flex;align-items:center;gap:0.5rem;margin-top:0.5rem;cursor:pointer;color:var(--text-04);"><input type="checkbox" checked id="remap-reindex"> Auto-reindex</label>
-          <label style="display:flex;align-items:center;gap:0.5rem;margin-top:0.5rem;cursor:pointer;color:var(--text-04);"><input type="checkbox" id="remap-recursive"> 하위 폴더 포함 (Recursive)</label>
-          <button class="btn btn-primary" style="margin-top:1rem;" onclick="Tabs.remapper.run()">Apply Remap</button>
+          <label style="display:flex;align-items:center;gap:0.5rem;margin-top:0.5rem;cursor:pointer;color:var(--text-04);"><input type="checkbox" checked id="remap-reindex"> ${t('remap.auto_reindex')}</label>
+          <label style="display:flex;align-items:center;gap:0.5rem;margin-top:0.5rem;cursor:pointer;color:var(--text-04);"><input type="checkbox" id="remap-recursive"> ${t('common.recursive')}</label>
+          <button class="btn btn-primary" style="margin-top:1rem;" onclick="Tabs.remapper.run()">${t('remap.apply')}</button>
         </div>
       </div>`;
   },
   async run() {
     const label_dir = document.getElementById('remap-lbl')?.value || G.lblDir;
     const output_dir = document.getElementById('remap-out')?.value;
-    if (!label_dir || !output_dir) { App.setStatus('Select directories'); return; }
+    if (!label_dir || !output_dir) { App.setStatus(t('common.select_dirs')); return; }
     const mapStr = document.getElementById('remap-map')?.value || '';
     const mapping = {};
     mapStr.split(',').forEach(p => { const [a,b] = p.trim().split(':'); if (a && b) mapping[a.trim()] = b.trim(); });
@@ -819,19 +811,19 @@ Tabs.merger = {
     return `
       <div style="max-width:640px;display:flex;flex-direction:column;gap:1.5rem;">
         <div class="card" style="padding:1.5rem;">
-          <h3 class="text-heading-h3" style="margin-bottom:1rem;display:flex;align-items:center;">Dataset Merger</h3>
+          <h3 class="text-heading-h3" style="margin-bottom:1rem;display:flex;align-items:center;">${t('merger.title')}</h3>
           <div id="merger-datasets" style="display:flex;flex-direction:column;gap:0.5rem;">
             ${imgDirInput('merge-d1')}
           </div>
-          <button class="btn btn-secondary btn-sm" style="margin-top:0.5rem;" onclick="Tabs.merger.addDataset()">+ Add Dataset</button>
+          <button class="btn btn-secondary btn-sm" style="margin-top:0.5rem;" onclick="Tabs.merger.addDataset()">${t('merger.add_dataset')}</button>
           ${outDirInput('merge-out')}
           <div class="form-group" style="margin-top:0.75rem;">
-            <label class="form-label">dHash Threshold</label>
+            <label class="form-label">${t('merger.dhash')}</label>
             <input type="number" class="form-input input-normal" value="10" min="0" max="64" id="merge-dhash">
-            <div class="text-secondary" style="font-size:10px;margin-top:0.25rem;">dHash는 이미지의 지각적 해시(perceptual hash)입니다. 값이 낮을수록 더 유사한 이미지만 중복으로 판단합니다. 0=완전 동일, 10=기본값, 64=최대 허용.</div>
+            <div class="text-secondary" style="font-size:10px;margin-top:0.25rem;">${t('merger.dhash_desc')}</div>
           </div>
-          <label style="display:flex;align-items:center;gap:0.5rem;margin-top:0.5rem;cursor:pointer;color:var(--text-04);"><input type="checkbox" id="merge-recursive"> 하위 폴더 포함 (Recursive)</label>
-          <button class="btn btn-primary" style="margin-top:1rem;" onclick="Tabs.merger.run()">Merge</button>
+          <label style="display:flex;align-items:center;gap:0.5rem;margin-top:0.5rem;cursor:pointer;color:var(--text-04);"><input type="checkbox" id="merge-recursive"> ${t('common.recursive')}</label>
+          <button class="btn btn-primary" style="margin-top:1rem;" onclick="Tabs.merger.run()">${t('merger.run')}</button>
         </div>
       </div>`;
   },
@@ -849,7 +841,7 @@ Tabs.merger = {
       if (v) datasets.push(v);
     }
     const output_dir = document.getElementById('merge-out')?.value;
-    if (!datasets.length || !output_dir) { App.setStatus('Select datasets and output'); return; }
+    if (!datasets.length || !output_dir) { App.setStatus(t('common.select_dirs')); return; }
     try {
       const r = await API.post('/api/data/merger', { datasets, output_dir, dhash_threshold: +(document.getElementById('merge-dhash')?.value || 10), recursive: document.getElementById('merge-recursive')?.checked });
       if (r.error) { App.setStatus('Error: ' + r.error); return; }
@@ -872,22 +864,22 @@ Tabs.sampler = {
   render() {
     return `<div style="max-width:640px;display:flex;flex-direction:column;gap:1.5rem;">
       <div class="card" style="padding:1.5rem;">
-        <h3 class="text-heading-h3" style="margin-bottom:1rem;display:flex;align-items:center;">Smart Sampler</h3>
+        <h3 class="text-heading-h3" style="margin-bottom:1rem;display:flex;align-items:center;">${t('sampler.title')}</h3>
         ${imgDirInput('samp-img')} ${lblDirInput('samp-lbl')} ${outDirInput('samp-out')}
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;margin-top:0.75rem;">
-          <div class="form-group"><label class="form-label">Strategy</label><select class="form-input input-normal" id="samp-strat"><option>Random</option><option>Balanced</option><option>Stratified</option></select></div>
-          <div class="form-group"><label class="form-label">Target Count</label><input type="number" class="form-input input-normal" id="samp-n" value="500" min="1"></div>
-          <div class="form-group"><label class="form-label">Seed</label><input type="number" class="form-input input-normal" id="samp-seed" value="42" min="0"></div>
+          <div class="form-group"><label class="form-label">${t('sampler.strategy')}</label><select class="form-input input-normal" id="samp-strat"><option>Random</option><option>Balanced</option><option>Stratified</option></select></div>
+          <div class="form-group"><label class="form-label">${t('sampler.target')}</label><input type="number" class="form-input input-normal" id="samp-n" value="500" min="1"></div>
+          <div class="form-group"><label class="form-label">${t('sampler.seed')}</label><input type="number" class="form-input input-normal" id="samp-seed" value="42" min="0"></div>
         </div>
-        <label style="display:flex;align-items:center;gap:0.5rem;margin-top:0.5rem;cursor:pointer;color:var(--text-04);"><input type="checkbox" checked id="samp-lbl-chk"> Include labels</label>
-        <label style="display:flex;align-items:center;gap:0.5rem;margin-top:0.5rem;cursor:pointer;color:var(--text-04);"><input type="checkbox" id="samp-recursive"> 하위 폴더 포함 (Recursive)</label>
+        <label style="display:flex;align-items:center;gap:0.5rem;margin-top:0.5rem;cursor:pointer;color:var(--text-04);"><input type="checkbox" checked id="samp-lbl-chk"> ${t('sampler.include_lbl')}</label>
+        <label style="display:flex;align-items:center;gap:0.5rem;margin-top:0.5rem;cursor:pointer;color:var(--text-04);"><input type="checkbox" id="samp-recursive"> ${t('common.recursive')}</label>
         <button class="btn btn-primary" style="margin-top:1rem;" onclick="Tabs.sampler.run()">${t('run')}</button>
       </div></div>`;
   },
   async run() {
     const img_dir = document.getElementById('samp-img')?.value || G.imgDir;
     const output_dir = document.getElementById('samp-out')?.value;
-    if (!img_dir || !output_dir) { App.setStatus('Select directories'); return; }
+    if (!img_dir || !output_dir) { App.setStatus(t('common.select_dirs')); return; }
     try {
       const r = await API.post('/api/data/sampler', {
         img_dir, label_dir: document.getElementById('samp-lbl')?.value || G.lblDir, output_dir,
@@ -917,20 +909,20 @@ Tabs.anomaly = {
   render() {
     return `<div style="display:flex;flex-direction:column;gap:1.5rem;">
       <div class="card" style="padding:1.5rem;">
-        <h3 class="text-heading-h3" style="margin-bottom:1rem;display:flex;align-items:center;">Label Anomaly Detector</h3>
+        <h3 class="text-heading-h3" style="margin-bottom:1rem;display:flex;align-items:center;">${t('anomaly.title')}</h3>
         ${imgDirInput('anom-img')} ${lblDirInput('anom-lbl')}
-        <label style="display:flex;align-items:center;gap:0.5rem;margin-top:0.5rem;cursor:pointer;color:var(--text-04);"><input type="checkbox" id="anom-recursive"> 하위 폴더 포함 (Recursive)</label>
+        <label style="display:flex;align-items:center;gap:0.5rem;margin-top:0.5rem;cursor:pointer;color:var(--text-04);"><input type="checkbox" id="anom-recursive"> ${t('common.recursive')}</label>
         <button class="btn btn-primary" style="margin-top:1rem;" onclick="Tabs.anomaly.run()">${t('run')}</button>
         <div style="margin-top:0.5rem;"><div class="progress-track"><div class="progress-fill" id="anom-prog" style="width:0%"></div></div>
           <span class="text-secondary" id="anom-msg" style="margin-top:0.25rem;display:block;">${t('ready')}</span></div>
       </div>
       <div class="card" style="padding:1.5rem;"><div class="table-container"><table><thead><tr><th>File</th><th>Type</th><th>Details</th><th>Severity</th></tr></thead>
-        <tbody id="anom-results"><tr><td colspan="4" class="text-secondary" style="text-align:center;padding:2rem;">Run detector to find anomalies</td></tr></tbody></table></div></div></div>`;
+        <tbody id="anom-results"><tr><td colspan="4" class="text-secondary" style="text-align:center;padding:2rem;">${t('anomaly.run_hint')}</td></tr></tbody></table></div></div></div>`;
   },
   async run() {
     const img_dir = document.getElementById('anom-img')?.value || G.imgDir;
     const label_dir = document.getElementById('anom-lbl')?.value || G.lblDir;
-    if (!img_dir) { App.setStatus('Select image directory'); return; }
+    if (!img_dir) { App.setStatus(t('eval.select_images')); return; }
     try {
       const r = await API.post('/api/quality/anomaly', { img_dir, label_dir, recursive: document.getElementById('anom-recursive')?.checked });
       if (r.error) { App.setStatus('Error: ' + r.error); return; }
@@ -946,7 +938,7 @@ Tabs.anomaly = {
       if (!s.running && s.results) {
         document.getElementById('anom-results').innerHTML = s.results.length
           ? s.results.map(r => `<tr><td>${r.file}</td><td>${r.type}</td><td style="font-size:11px;">${r.details}</td><td>${r.severity}</td></tr>`).join('')
-          : '<tr><td colspan="4" class="text-secondary" style="text-align:center;">No anomalies found ✓</td></tr>';
+          : '<tr><td colspan="4" class="text-secondary" style="text-align:center;">' + t('anomaly.none') + '</td></tr>';
         App.setStatus(s.msg);
       } else if (s.running) setTimeout(() => this._poll(), 500);
     } catch(e) {}
@@ -959,9 +951,9 @@ Tabs.quality = {
   render() {
     return `<div style="display:flex;flex-direction:column;gap:1.5rem;">
       <div class="card" style="padding:1.5rem;">
-        <h3 class="text-heading-h3" style="margin-bottom:1rem;display:flex;align-items:center;">Image Quality Checker</h3>
+        <h3 class="text-heading-h3" style="margin-bottom:1rem;display:flex;align-items:center;">${t('quality.title')}</h3>
         ${imgDirInput('qual-img')}
-        <label style="display:flex;align-items:center;gap:0.5rem;margin-top:0.5rem;cursor:pointer;color:var(--text-04);"><input type="checkbox" id="qual-recursive"> 하위 폴더 포함 (Recursive)</label>
+        <label style="display:flex;align-items:center;gap:0.5rem;margin-top:0.5rem;cursor:pointer;color:var(--text-04);"><input type="checkbox" id="qual-recursive"> ${t('common.recursive')}</label>
         <button class="btn btn-primary" style="margin-top:1rem;" onclick="Tabs.quality.run()">${t('run')}</button>
         <div style="margin-top:0.5rem;"><div class="progress-track"><div class="progress-fill" id="qual-prog" style="width:0%"></div></div>
           <span class="text-secondary" id="qual-msg" style="margin-top:0.25rem;display:block;">${t('ready')}</span></div>
@@ -971,7 +963,7 @@ Tabs.quality = {
   },
   async run() {
     const img_dir = document.getElementById('qual-img')?.value || G.imgDir;
-    if (!img_dir) { App.setStatus('Select image directory'); return; }
+    if (!img_dir) { App.setStatus(t('eval.select_images')); return; }
     try {
       const r = await API.post('/api/quality/image-quality', { img_dir, recursive: document.getElementById('qual-recursive')?.checked });
       if (r.error) { App.setStatus('Error: ' + r.error); return; }
@@ -999,10 +991,10 @@ Tabs.duplicate = {
   render() {
     return `<div style="display:flex;flex-direction:column;gap:1.5rem;">
       <div class="card" style="padding:1.5rem;">
-        <h3 class="text-heading-h3" style="margin-bottom:1rem;display:flex;align-items:center;">Near-Duplicate Detector</h3>
+        <h3 class="text-heading-h3" style="margin-bottom:1rem;display:flex;align-items:center;">${t('dup.title')}</h3>
         ${imgDirInput('dup-img')}
-        <div class="form-group" style="margin-top:0.75rem;"><label class="form-label">Hamming Threshold</label><input type="number" class="form-input input-normal" id="dup-thr" value="10" min="0" max="64"></div>
-        <label style="display:flex;align-items:center;gap:0.5rem;margin-top:0.5rem;cursor:pointer;color:var(--text-04);"><input type="checkbox" id="dup-recursive"> 하위 폴더 포함 (Recursive)</label>
+        <div class="form-group" style="margin-top:0.75rem;"><label class="form-label">${t('dup.hamming')}</label><input type="number" class="form-input input-normal" id="dup-thr" value="10" min="0" max="64"></div>
+        <label style="display:flex;align-items:center;gap:0.5rem;margin-top:0.5rem;cursor:pointer;color:var(--text-04);"><input type="checkbox" id="dup-recursive"> ${t('common.recursive')}</label>
         <button class="btn btn-primary" style="margin-top:1rem;" onclick="Tabs.duplicate.run()">${t('run')}</button>
         <div style="margin-top:0.5rem;"><div class="progress-track"><div class="progress-fill" id="dup-prog" style="width:0%"></div></div>
           <span class="text-secondary" id="dup-msg" style="margin-top:0.25rem;display:block;">${t('ready')}</span></div>
@@ -1012,7 +1004,7 @@ Tabs.duplicate = {
   },
   async run() {
     const img_dir = document.getElementById('dup-img')?.value || G.imgDir;
-    if (!img_dir) { App.setStatus('Select image directory'); return; }
+    if (!img_dir) { App.setStatus(t('eval.select_images')); return; }
     try {
       const r = await API.post('/api/quality/duplicate', { img_dir, threshold: +document.getElementById('dup-thr').value, recursive: document.getElementById('dup-recursive')?.checked });
       if (r.error) { App.setStatus('Error: ' + r.error); return; }
@@ -1028,7 +1020,7 @@ Tabs.duplicate = {
       if (!s.running && s.results) {
         document.getElementById('dup-results').innerHTML = s.results.length
           ? s.results.map(r => `<tr><td>${r.group}</td><td>${r.image_a}</td><td>${r.image_b}</td><td>${r.distance}</td></tr>`).join('')
-          : '<tr><td colspan="4" class="text-secondary" style="text-align:center;">No duplicates found ✓</td></tr>';
+          : '<tr><td colspan="4" class="text-secondary" style="text-align:center;">' + t('dup.none') + '</td></tr>';
         App.setStatus(s.msg);
       } else if (s.running) setTimeout(() => this._poll(), 500);
     } catch(e) {}
@@ -1048,12 +1040,12 @@ Tabs.leaky = {
     return `
       <div style="max-width:640px;display:flex;flex-direction:column;gap:1.5rem;">
         <div class="card" style="padding:1.5rem;">
-          <h3 class="text-heading-h3" style="margin-bottom:1rem;display:flex;align-items:center;">Leaky Split Detector</h3>
+          <h3 class="text-heading-h3" style="margin-bottom:1rem;display:flex;align-items:center;">${t('leaky.title')}</h3>
           ${dirInput('leak-train', t('splitter.train'))}
           ${dirInput('leak-val', t('splitter.val'))}
           ${dirInput('leak-test', t('splitter.test'))}
           <div class="form-group" style="margin-top:0.75rem;">
-            <label class="form-label">Hamming Threshold</label>
+            <label class="form-label">${t('leaky.hamming')}</label>
             <input type="number" class="form-input input-normal" value="10" min="0" max="64">
           </div>
           <button class="btn btn-primary" style="margin-top:1rem;" onclick="Tabs.leaky.run()">${t('run')}</button>
@@ -1062,7 +1054,7 @@ Tabs.leaky = {
         </div>
         <div class="card" style="padding:1.5rem;">
           <div class="table-container"><table><thead><tr><th>Split Pair</th><th>Duplicates</th><th>Files</th></tr></thead>
-          <tbody id="leak-results"><tr><td colspan="3" class="text-secondary" style="text-align:center;padding:2rem;">Run detector to find cross-split duplicates</td></tr></tbody></table></div>
+          <tbody id="leak-results"><tr><td colspan="3" class="text-secondary" style="text-align:center;padding:2rem;">${t('leaky.run_hint')}</td></tr></tbody></table></div>
         </div>
       </div>`;
   },
@@ -1070,7 +1062,7 @@ Tabs.leaky = {
     const train_dir = document.getElementById('leak-train')?.value;
     const val_dir = document.getElementById('leak-val')?.value;
     const test_dir = document.getElementById('leak-test')?.value;
-    if (!train_dir && !val_dir) { App.setStatus('Select at least 2 split directories'); return; }
+    if (!train_dir && !val_dir) { App.setStatus(t('common.select_dirs')); return; }
     try {
       const r = await API.post('/api/quality/leaky', { train_dir, val_dir, test_dir, threshold: 10 });
       if (r.error) { App.setStatus('Error: ' + r.error); return; }
@@ -1083,7 +1075,7 @@ Tabs.leaky = {
       if (!s.running && s.results) {
         document.getElementById('leak-results').innerHTML = s.results.length
           ? s.results.map(r => `<tr><td>${r.pair}</td><td>${r.duplicates}</td><td style="font-size:11px;">${r.files}</td></tr>`).join('')
-          : '<tr><td colspan="3" class="text-secondary" style="text-align:center;">No leaks found ✓</td></tr>';
+          : '<tr><td colspan="3" class="text-secondary" style="text-align:center;">' + t('leaky.none') + '</td></tr>';
         App.setStatus(s.msg || 'Complete');
       } else if (s.running) setTimeout(() => this._poll(), 500);
     } catch(e) {}
@@ -1096,12 +1088,12 @@ Tabs.similarity = {
   render() {
     return `<div style="display:flex;flex-direction:column;gap:1.5rem;">
       <div class="card" style="padding:1.5rem;">
-        <h3 class="text-heading-h3" style="margin-bottom:1rem;display:flex;align-items:center;">Similarity Search</h3>
+        <h3 class="text-heading-h3" style="margin-bottom:1rem;display:flex;align-items:center;">${t('sim.title')}</h3>
         ${imgDirInput('sim-img')}
-        <div class="form-group" style="margin-top:0.75rem;"><label class="form-label">Query Image</label>
+        <div class="form-group" style="margin-top:0.75rem;"><label class="form-label">${t('sim.query')}</label>
           <div style="display:flex;gap:0.5rem;"><input type="text" class="form-input input-normal" style="flex:1;" readonly id="sim-query"><button class="btn btn-secondary btn-sm" onclick="pickFile('sim-query','Images (*.jpg *.png)')">${t('browse')}</button></div></div>
-        <div class="form-group"><label class="form-label">Top-K</label><input type="number" class="form-input input-normal" id="sim-k" value="10" min="1" max="100"></div>
-        <button class="btn btn-primary" style="margin-top:1rem;" onclick="Tabs.similarity.run()">Build Index</button>
+        <div class="form-group"><label class="form-label">${t('sim.topk')}</label><input type="number" class="form-input input-normal" id="sim-k" value="10" min="1" max="100"></div>
+        <button class="btn btn-primary" style="margin-top:1rem;" onclick="Tabs.similarity.run()">${t('sim.build')}</button>
         <div style="margin-top:0.5rem;"><div class="progress-track"><div class="progress-fill" id="sim-prog" style="width:0%"></div></div>
           <span class="text-secondary" id="sim-msg" style="margin-top:0.25rem;display:block;">${t('ready')}</span></div>
       </div>
@@ -1110,7 +1102,7 @@ Tabs.similarity = {
   },
   async run() {
     const img_dir = document.getElementById('sim-img')?.value || G.imgDir;
-    if (!img_dir) { App.setStatus('Select image directory'); return; }
+    if (!img_dir) { App.setStatus(t('eval.select_images')); return; }
     try {
       const r = await API.post('/api/quality/similarity', { img_dir, query: document.getElementById('sim-query')?.value || '', top_k: +document.getElementById('sim-k').value });
       if (r.error) { App.setStatus('Error: ' + r.error); return; }
@@ -1138,11 +1130,11 @@ Tabs.batch = {
   render() {
     return `<div style="display:flex;flex-direction:column;gap:1.5rem;">
       <div class="card" style="padding:1.5rem;">
-        <h3 class="text-heading-h3" style="margin-bottom:1rem;display:flex;align-items:center;">Batch Inference</h3>
+        <h3 class="text-heading-h3" style="margin-bottom:1rem;display:flex;align-items:center;">${t('batch.title')}</h3>
         ${modelInput('bat-model')} ${imgDirInput('bat-img')} ${outDirInput('bat-out')}
-        <div class="form-group" style="margin-top:0.75rem;"><label class="form-label">Output Format</label><select class="form-input input-normal" id="bat-fmt"><option>YOLO txt</option><option>JSON</option><option>CSV</option></select></div>
-        <label style="display:flex;align-items:center;gap:0.5rem;margin-top:0.5rem;cursor:pointer;color:var(--text-04);"><input type="checkbox" id="bat-vis"> Save visualizations</label>
-        <button class="btn btn-primary" style="margin-top:1rem;" onclick="Tabs.batch.run()">Run Batch</button>
+        <div class="form-group" style="margin-top:0.75rem;"><label class="form-label">${t('batch.format')}</label><select class="form-input input-normal" id="bat-fmt"><option>YOLO txt</option><option>JSON</option><option>CSV</option></select></div>
+        <label style="display:flex;align-items:center;gap:0.5rem;margin-top:0.5rem;cursor:pointer;color:var(--text-04);"><input type="checkbox" id="bat-vis"> ${t('batch.save_vis')}</label>
+        <button class="btn btn-primary" style="margin-top:1rem;" onclick="Tabs.batch.run()">${t('batch.run')}</button>
         <div style="margin-top:0.5rem;"><div class="progress-track"><div class="progress-fill" id="bat-prog" style="width:0%"></div></div>
           <span class="text-secondary" id="bat-msg" style="margin-top:0.25rem;display:block;">${t('ready')}</span></div>
       </div></div>`;
@@ -1151,7 +1143,7 @@ Tabs.batch = {
     const model_path = document.getElementById('bat-model')?.value || G.model;
     const img_dir = document.getElementById('bat-img')?.value || G.imgDir;
     const output_dir = document.getElementById('bat-out')?.value;
-    if (!model_path || !img_dir || !output_dir) { App.setStatus('Select model, images, and output'); return; }
+    if (!model_path || !img_dir || !output_dir) { App.setStatus(t('common.select_dirs')); return; }
     try {
       const r = await API.post('/api/batch/run', {
         model_path, img_dir, output_dir,
@@ -1181,34 +1173,34 @@ Tabs.augmentation = {
     return `
       <div style="display:flex;flex-direction:column;gap:1.5rem;">
         <div class="card" style="padding:1.5rem;">
-          <h3 class="text-heading-h3" style="margin-bottom:1rem;display:flex;align-items:center;">Augmentation Preview</h3>
+          <h3 class="text-heading-h3" style="margin-bottom:1rem;display:flex;align-items:center;">${t('aug.title')}</h3>
           ${imgDirInput('aug-img')}
           ${lblDirInput('aug-lbl')}
           <div class="form-group" style="margin-top:0.75rem;">
-            <label class="form-label">Augmentation Type</label>
+            <label class="form-label">${t('aug.type')}</label>
             <select class="form-input input-normal" id="aug-type">
               <option>Mosaic 2×2</option><option>Flip</option><option>Rotate</option>
               <option>Brightness</option>
             </select>
           </div>
-          <button class="btn btn-primary" style="margin-top:1rem;" onclick="Tabs.augmentation.run()">Preview</button>
+          <button class="btn btn-primary" style="margin-top:1rem;" onclick="Tabs.augmentation.run()">${t('aug.preview')}</button>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
-          <div class="card" style="padding:1rem;min-height:250px;display:flex;align-items:center;justify-content:center;" id="aug-orig"><span class="text-muted">Original</span></div>
-          <div class="card" style="padding:1rem;min-height:250px;display:flex;align-items:center;justify-content:center;" id="aug-result"><span class="text-muted">Augmented</span></div>
+          <div class="card" style="padding:1rem;min-height:250px;display:flex;align-items:center;justify-content:center;" id="aug-orig"><span class="text-muted">${t('aug.original')}</span></div>
+          <div class="card" style="padding:1rem;min-height:250px;display:flex;align-items:center;justify-content:center;" id="aug-result"><span class="text-muted">${t('aug.augmented')}</span></div>
         </div>
       </div>`;
   },
   async run() {
     const img_dir = document.getElementById('aug-img')?.value || G.imgDir;
-    if (!img_dir) { App.setStatus('Select image directory'); return; }
-    App.setStatus('Generating preview...');
+    if (!img_dir) { App.setStatus(t('eval.select_images')); return; }
+    App.setStatus(t('aug.generating'));
     try {
       const r = await API.post('/api/batch/augmentation', { img_dir, aug_type: document.getElementById('aug-type').value });
       if (r.error) { App.setStatus('Error: ' + r.error); return; }
       document.getElementById('aug-orig').innerHTML = `<div style="text-align:center;"><img src="data:image/jpeg;base64,${r.original}" style="max-width:100%;max-height:300px;"><div class="text-secondary" style="margin-top:0.25rem;">${r.file}</div></div>`;
       document.getElementById('aug-result').innerHTML = `<img src="data:image/jpeg;base64,${r.augmented}" style="max-width:100%;max-height:300px;">`;
-      App.setStatus('Preview ready');
+      App.setStatus(t('aug.ready'));
     } catch(e) { App.setStatus('Error: ' + e.message, e.stack); }
   }
 };
