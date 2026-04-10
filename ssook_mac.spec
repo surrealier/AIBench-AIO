@@ -57,7 +57,6 @@ a = Analysis(
     hookspath=[],
     runtime_hooks=[],
     excludes=[
-        'onnxruntime',
         'PySide6', 'PyQt5', 'PyQt6', 'tkinter',
         'torch', 'torchvision', 'torchaudio',
         'IPython', 'jupyter', 'notebook', 'ultralytics',

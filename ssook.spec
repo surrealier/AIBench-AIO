@@ -81,7 +81,6 @@ a = Analysis(
     hookspath=[],
     runtime_hooks=[],
     excludes=[
-        'onnxruntime',  # 메인 환경의 onnxruntime 제외 — ep_runtimes에서 로드
         'PySide6', 'PyQt5', 'PyQt6',
         'torch', 'torchvision', 'torchaudio',
         'IPython', 'jupyter', 'notebook', 'ultralytics',
