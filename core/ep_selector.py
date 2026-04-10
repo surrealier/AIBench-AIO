@@ -36,13 +36,21 @@ _EP_LABELS = {
     "cpu": "CPU",
 }
 
-# --- selection result (populated by select_and_activate) ---
+_EP_PROVIDER_MAP = {
+    "cuda": "CUDAExecutionProvider",
+    "directml": "DmlExecutionProvider",
+    "openvino": "OpenVINOExecutionProvider",
+    "coreml": "CoreMLExecutionProvider",
+    "cpu": "CPUExecutionProvider",
+}
+
+# --- selection result (populated after full init) ---
 ep_result: dict = {
     "selected": None,
     "provider": None,
     "available_eps": [],
     "bundled_eps": [],
-    "skipped": [],       # [{ep, reason, fix}]
+    "skipped": [],
     "fallback": False,
     "fallback_reason": None,
     "fallback_fix": None,
@@ -95,33 +103,28 @@ def _resolve_ep_path(key: str) -> "str | None":
     return None
 
 
-_EP_PROVIDER_MAP = {
-    "cuda": "CUDAExecutionProvider",
-    "directml": "DmlExecutionProvider",
-    "openvino": "OpenVINOExecutionProvider",
-    "coreml": "CoreMLExecutionProvider",
-    "cpu": "CPUExecutionProvider",
-}
-
-
 def select_and_activate() -> str:
+    """
+    Phase 1: If ep_runtimes bundles exist, pick the best and inject into sys.path.
+    If no bundles, do nothing -- system/PyInstaller-bundled onnxruntime will be used.
+    Actual provider detection happens in get_ep_status() after onnxruntime is loaded.
+    """
     plat = platform.system()
     priority = _PRIORITY.get(plat, ["cpu"])
 
-    # scan bundled EPs
     bundled = [k for k in priority if _resolve_ep_path(k)]
     ep_result["bundled_eps"] = bundled
+
+    if not bundled:
+        # No ep_runtimes -- will use system onnxruntime, detect later
+        ep_result["selected"] = "system"
+        print("[EP Selector] no ep_runtimes found, using system onnxruntime")
+        return "system"
 
     selected = None
     for key in priority:
         if not _resolve_ep_path(key):
-            ep_result["skipped"].append({
-                "ep": key,
-                "reason": f"{_EP_LABELS.get(key, key)} runtime not bundled",
-                "fix": f"Run: python scripts/setup_ep.py {key}  then rebuild",
-            })
             continue
-
         if key == "cuda" and not _has_nvidia_gpu():
             ep_result["skipped"].append({
                 "ep": key,
@@ -129,7 +132,6 @@ def select_and_activate() -> str:
                 "fix": "Install NVIDIA driver, or check GPU connection",
             })
             continue
-
         if key == "openvino" and not _has_intel_gpu():
             ep_result["skipped"].append({
                 "ep": key,
@@ -137,22 +139,11 @@ def select_and_activate() -> str:
                 "fix": "This EP requires Intel iGPU/dGPU",
             })
             continue
-
         selected = key
         break
 
     if selected is None and _resolve_ep_path("cpu"):
         selected = "cpu"
-
-    # determine if fallback occurred
-    top_choice = priority[0] if priority else None
-    if selected and selected != top_choice:
-        ep_result["fallback"] = True
-        # find the first skipped reason
-        if ep_result["skipped"]:
-            first = ep_result["skipped"][0]
-            ep_result["fallback_reason"] = first["reason"]
-            ep_result["fallback_fix"] = first["fix"]
 
     if selected:
         ep_path = _resolve_ep_path(selected)
@@ -166,31 +157,83 @@ def select_and_activate() -> str:
                 if libs.is_dir():
                     os.add_dll_directory(str(libs))
         ep_result["selected"] = selected
-        ep_result["provider"] = _EP_PROVIDER_MAP.get(selected, "CPUExecutionProvider")
         print(f"[EP Selector] selected: {selected} -> {ep_path}")
     else:
-        ep_result["selected"] = "auto"
-        ep_result["provider"] = "CPUExecutionProvider"
-        ep_result["fallback"] = True
-        ep_result["fallback_reason"] = "No EP runtime available"
-        ep_result["fallback_fix"] = "Run: python scripts/setup_ep.py"
-        print("[EP Selector] WARNING: no EP available, using system onnxruntime")
+        ep_result["selected"] = "system"
+        print("[EP Selector] no suitable EP bundle, using system onnxruntime")
 
-    # fill available_eps after onnxruntime is loadable
-    return selected or "auto"
-
-
-def get_ort_providers() -> list:
-    """Get actual available providers from loaded onnxruntime."""
-    try:
-        import onnxruntime as ort
-        return ort.get_available_providers()
-    except Exception:
-        return []
+    return ep_result["selected"]
 
 
 def get_ep_status() -> dict:
-    """Full EP status for API/UI."""
-    providers = get_ort_providers()
+    """
+    Full EP status for API/UI.
+    Called after onnxruntime is loaded -- detects actual providers and
+    determines the real active provider + fallback info.
+    """
+    try:
+        import onnxruntime as ort
+        providers = ort.get_available_providers()
+    except Exception:
+        providers = []
+
     ep_result["available_eps"] = providers
+
+    # Determine actual active provider from what onnxruntime reports
+    plat = platform.system()
+    priority_providers = {
+        "Windows": ["CUDAExecutionProvider", "DmlExecutionProvider",
+                     "OpenVINOExecutionProvider", "CPUExecutionProvider"],
+        "Linux":   ["CUDAExecutionProvider", "OpenVINOExecutionProvider",
+                     "CPUExecutionProvider"],
+        "Darwin":  ["CoreMLExecutionProvider", "CPUExecutionProvider"],
+    }.get(plat, ["CPUExecutionProvider"])
+
+    active_provider = "CPUExecutionProvider"
+    for p in priority_providers:
+        if p in providers:
+            active_provider = p
+            break
+
+    ep_result["provider"] = active_provider
+
+    # Reverse map provider to EP key
+    _prov_to_key = {v: k for k, v in _EP_PROVIDER_MAP.items()}
+    active_key = _prov_to_key.get(active_provider, "cpu")
+    if ep_result["selected"] == "system":
+        ep_result["selected"] = active_key
+
+    # Determine fallback: did we end up on a lower-priority provider?
+    top_provider = priority_providers[0] if priority_providers else None
+    if active_provider != top_provider:
+        ep_result["fallback"] = True
+        # Build skip reasons for providers that were available but not active
+        if not ep_result["skipped"]:
+            for p in priority_providers:
+                if p == active_provider:
+                    break
+                key = _prov_to_key.get(p, p)
+                label = _EP_LABELS.get(key, key)
+                if p not in providers:
+                    reason = f"{label} not available in this onnxruntime build"
+                    if key == "cuda":
+                        fix = "Build with onnxruntime-gpu, or run: python scripts/setup_ep.py cuda"
+                    elif key == "directml":
+                        fix = "Build with onnxruntime-directml, or run: python scripts/setup_ep.py directml"
+                    else:
+                        fix = f"Run: python scripts/setup_ep.py {key}"
+                    ep_result["skipped"].append({"ep": key, "reason": reason, "fix": fix})
+                elif key == "cuda" and not _has_nvidia_gpu():
+                    ep_result["skipped"].append({
+                        "ep": key,
+                        "reason": "NVIDIA GPU not detected (nvidia-smi failed)",
+                        "fix": "Install NVIDIA driver, or check GPU connection",
+                    })
+        if ep_result["skipped"]:
+            first = ep_result["skipped"][0]
+            ep_result["fallback_reason"] = first["reason"]
+            ep_result["fallback_fix"] = first["fix"]
+    else:
+        ep_result["fallback"] = False
+
     return ep_result
