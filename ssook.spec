@@ -1,13 +1,29 @@
 # -*- mode: python ; coding: utf-8 -*-
 # PyInstaller spec for ssook (Web UI)
-# Build: pyinstaller ssook.spec
+# Build: python scripts/build.py --ep cuda
+
+import glob, os, importlib
 
 block_cipher = None
+
+# ── onnxruntime GPU 바이너리 자동 수집 ──
+_ort_binaries = []
+try:
+    _ort_pkg = os.path.dirname(importlib.import_module('onnxruntime').__file__)
+    _capi = os.path.join(_ort_pkg, 'capi')
+    for pattern in ['*.dll', '*.so', '*.dylib', '*.pyd']:
+        for f in glob.glob(os.path.join(_capi, pattern)):
+            _ort_binaries.append((f, 'onnxruntime/capi'))
+    # CUDA/TensorRT/cuDNN DLL (onnxruntime-gpu 패키지에 포함)
+    for f in glob.glob(os.path.join(_ort_pkg, '*.dll')):
+        _ort_binaries.append((f, 'onnxruntime'))
+except Exception:
+    pass
 
 a = Analysis(
     ['run_web.py'],
     pathex=['.'],
-    binaries=[],
+    binaries=_ort_binaries,
     datas=[
         ('web',         'web'),
         ('settings',    'settings'),

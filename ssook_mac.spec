@@ -1,13 +1,26 @@
 # -*- mode: python ; coding: utf-8 -*-
 # PyInstaller spec for ssook — macOS (Web UI)
-# Build: pyinstaller ssook_mac.spec
+# Build: python scripts/build.py --ep coreml
+
+import glob, os, importlib
 
 block_cipher = None
+
+# ── onnxruntime 바이너리 자동 수집 ──
+_ort_binaries = []
+try:
+    _ort_pkg = os.path.dirname(importlib.import_module('onnxruntime').__file__)
+    _capi = os.path.join(_ort_pkg, 'capi')
+    for pattern in ['*.so', '*.dylib', '*.pyd']:
+        for f in glob.glob(os.path.join(_capi, pattern)):
+            _ort_binaries.append((f, 'onnxruntime/capi'))
+except Exception:
+    pass
 
 a = Analysis(
     ['run_web.py'],
     pathex=['.'],
-    binaries=[],
+    binaries=_ort_binaries,
     datas=[
         ('web',         'web'),
         ('settings',    'settings'),
@@ -69,7 +82,7 @@ app = BUNDLE(
     icon='assets/icon.icns',
     bundle_identifier='com.ssook.app',
     info_plist={
-        'CFBundleShortVersionString': '1.1.0',
+        'CFBundleShortVersionString': '1.4.0',
         'CFBundleName': 'ssook',
         'NSHighResolutionCapable': True,
         'NSRequiresAquaSystemAppearance': False,
