@@ -308,7 +308,7 @@ if _HAS_QT:
         def _run_ep_subprocess(self, ep_key: str, configs: list, total_steps: int, done_offset: int) -> int:
             """Returns updated done_offset after this EP group finishes."""
             import dataclasses
-            from core.ep_manager import get_ep_dir, _PROJECT_ROOT, launch_worker
+            from core.ep_manager import launch_worker
 
             cfg_dicts = []
             for c in configs:
@@ -319,8 +319,6 @@ if _HAS_QT:
             task = {
                 "task": "benchmark",
                 "ep_key": ep_key,
-                "ep_dir": str(get_ep_dir(ep_key)),
-                "proj_root": str(_PROJECT_ROOT),
                 "configs": cfg_dicts,
             }
 

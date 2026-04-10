@@ -71,6 +71,7 @@ def _build_providers() -> list:
     for prov in [
         "CUDAExecutionProvider",
         "TensorrtExecutionProvider",
+        "CoreMLExecutionProvider",
         "OpenVINOExecutionProvider",
         "DmlExecutionProvider",
         "CPUExecutionProvider",
@@ -78,6 +79,12 @@ def _build_providers() -> list:
         if prov in available:
             if prov == "CPUExecutionProvider":
                 return ["CPUExecutionProvider"]
+            if prov == "OpenVINOExecutionProvider":
+                return [
+                    ("OpenVINOExecutionProvider", {"device_type": "GPU"}),
+                    ("OpenVINOExecutionProvider", {"device_type": "CPU"}),
+                    "CPUExecutionProvider",
+                ]
             return [prov, "CPUExecutionProvider"]
     return ["CPUExecutionProvider"]
 

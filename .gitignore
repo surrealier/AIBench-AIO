@@ -73,5 +73,6 @@ task.md
 .DS_Store
 Thumbs.db
 ep_packages/
+ep_venvs/
 benchmark_results.*
 eval_report.*

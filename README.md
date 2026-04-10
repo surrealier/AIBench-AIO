@@ -10,7 +10,7 @@
 [![FastAPI](https://img.shields.io/badge/backend-FastAPI-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![ONNX Runtime](https://img.shields.io/badge/runtime-ONNX-005CED?logo=onnx&logoColor=white)](https://onnxruntime.ai)
 [![License: MIT](https://img.shields.io/badge/license-MIT-yellow.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-1.3.2-blue)](#)
+[![Version](https://img.shields.io/badge/version-1.4.0-blue)](#)
 
 </div>
 
@@ -88,6 +88,11 @@ pip install umap-learn                          # UMAP embedding
 pip install pywebview                           # native desktop window
 pip install onnxruntime-gpu                     # CUDA acceleration
 
+# EP venv 격리 설치 (GPU/DirectML/OpenVINO/CoreML 동시 공존)
+python scripts/setup_ep.py                      # 플랫폼 전체 EP 설치
+python scripts/setup_ep.py cuda cpu             # 특정 EP만 설치
+python scripts/setup_ep.py --status             # 설치 상태 확인
+
 python run_web.py
 ```
 
@@ -162,6 +167,13 @@ python -m pytest tests/ -v
 ---
 
 ## 📋 Changelog
+
+### v1.4.0
+- **EP venv Isolation**: onnxruntime 변종별 독립 venv 격리 (`ep_venvs/`) — GPU/DirectML/OpenVINO/CoreML/CPU 동시 공존
+- **Auto EP Selection**: 플랫폼·하드웨어 기반 최적 Execution Provider 자동 선택
+- **CoreML Support**: macOS Apple Silicon CoreMLExecutionProvider 지원
+- **OpenVINO GPU-first**: OpenVINO EP가 Intel iGPU 우선 시도, 불가 시 OpenVINO CPU 폴백
+- **Cross-platform Setup**: `python scripts/setup_ep.py` 단일 스크립트로 Windows/Linux/macOS EP 설치
 
 ### v1.3.2
 - **Bugfix**: Fix Internal Server Error (index.html missing from build)

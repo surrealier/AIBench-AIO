@@ -511,13 +511,11 @@ class BottleneckAnalyzer(QThread):
         self._stopped = True
 
     def _run_ep_subprocess(self) -> None:
-        from core.ep_manager import get_ep_dir, _PROJECT_ROOT, launch_worker
+        from core.ep_manager import launch_worker
 
         task = {
             "task": "bottleneck",
             "ep_key": self.ep_key,
-            "ep_dir": str(get_ep_dir(self.ep_key)),
-            "proj_root": str(_PROJECT_ROOT),
             "model_path": self.model_path,
             "model_type": self.model_type,
             "batch_size": self.batch_size,

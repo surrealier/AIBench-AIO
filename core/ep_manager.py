@@ -1,70 +1,149 @@
 """
-EP(Execution Provider) 패키지 관리.
+EP(Execution Provider) venv 기반 관리.
+
 onnxruntime 각 변종은 동일한 Python 네임스페이스를 공유하므로 동시 설치 불가.
-→ ep_packages/ 하위 디렉토리에 --target 설치하여 격리,
-  실행 시 서브프로세스의 sys.path를 조작하여 원하는 변종을 로드.
+→ ep_venvs/ 하위에 변종별 venv를 생성하여 완전 격리,
+  실행 시 해당 venv의 Python 인터프리터로 서브프로세스를 실행.
 """
 import json
 import os
+import platform
 import subprocess
 import sys
 from pathlib import Path
 
 _PROJECT_ROOT = Path(__file__).parent.parent
-EP_PACKAGES_DIR = _PROJECT_ROOT / "ep_packages"
+EP_VENVS_DIR = _PROJECT_ROOT / "ep_venvs"
 WORKER_SCRIPT = Path(__file__).parent / "ep_worker.py"
 _CREATE_NO_WINDOW = 0x08000000 if sys.platform == "win32" else 0
 
 EP_VARIANTS: dict = {
     "cpu": {
         "label": "CPU  (onnxruntime)",
-        "pkg":   "onnxruntime",
-        "desc":  "기본 CPU 실행 — OpenMP 멀티스레드",
+        "pkg": "onnxruntime",
+        "desc": "기본 CPU 실행 — OpenMP 멀티스레드",
+        "provider": "CPUExecutionProvider",
+        "platforms": ["win32", "linux", "darwin"],
     },
     "cuda": {
         "label": "CUDA / TensorRT  (onnxruntime-gpu)",
-        "pkg":   "onnxruntime-gpu",
-        "desc":  "NVIDIA GPU — CUDAExecutionProvider 포함",
-    },
-    "openvino": {
-        "label": "OpenVINO  (onnxruntime-openvino)",
-        "pkg":   "onnxruntime-openvino",
-        "desc":  "Intel CPU / iGPU — OpenVINOExecutionProvider",
+        "pkg": "onnxruntime-gpu",
+        "desc": "NVIDIA GPU — CUDAExecutionProvider 포함",
+        "provider": "CUDAExecutionProvider",
+        "platforms": ["win32", "linux"],
     },
     "directml": {
         "label": "DirectML  (onnxruntime-directml)",
-        "pkg":   "onnxruntime-directml",
-        "desc":  "Windows GPU 범용 — DmlExecutionProvider (AMD / Intel / NVIDIA)",
+        "pkg": "onnxruntime-directml",
+        "desc": "Windows GPU 범용 — DmlExecutionProvider (AMD / Intel / NVIDIA)",
+        "provider": "DmlExecutionProvider",
+        "platforms": ["win32"],
     },
+    "openvino": {
+        "label": "OpenVINO  (onnxruntime-openvino)",
+        "pkg": "onnxruntime-openvino",
+        "desc": "Intel iGPU 우선, 불가 시 OpenVINO CPU 폴백",
+        "provider": "OpenVINOExecutionProvider",
+        "platforms": ["win32", "linux"],
+    },
+    "coreml": {
+        "label": "CoreML  (onnxruntime + coremltools)",
+        "pkg": "onnxruntime",
+        "extra_pkgs": ["coremltools"],
+        "desc": "Apple Silicon / macOS — CoreMLExecutionProvider",
+        "provider": "CoreMLExecutionProvider",
+        "platforms": ["darwin"],
+    },
+}
+
+# 플랫폼별 자동 선택 우선순위 (위에서부터 시도)
+_AUTO_PRIORITY = {
+    "win32": ["cuda", "directml", "openvino", "cpu"],
+    "linux": ["cuda", "openvino", "cpu"],
+    "darwin": ["coreml", "cpu"],
 }
 
 
 def get_ep_dir(ep_key: str) -> Path:
-    return EP_PACKAGES_DIR / ep_key
+    return EP_VENVS_DIR / ep_key
+
+
+def _get_venv_python(ep_key: str) -> Path:
+    """venv 내 Python 인터프리터 경로 반환."""
+    base = get_ep_dir(ep_key)
+    if sys.platform == "win32":
+        return base / "Scripts" / "python.exe"
+    return base / "bin" / "python"
 
 
 def is_ep_available(ep_key: str) -> bool:
-    """ep_packages/{key}/onnxruntime 패키지 폴더가 있으면 설치된 것으로 간주."""
-    return (get_ep_dir(ep_key) / "onnxruntime").is_dir()
+    """venv의 Python 실행 파일이 존재하면 설치된 것으로 간주."""
+    return _get_venv_python(ep_key).is_file()
 
 
 def get_available_eps() -> "dict[str, bool]":
-    return {k: is_ep_available(k) for k in EP_VARIANTS}
+    """현재 플랫폼에 해당하는 EP만 반환."""
+    plat = sys.platform
+    return {
+        k: is_ep_available(k)
+        for k, v in EP_VARIANTS.items()
+        if plat in v["platforms"]
+    }
+
+
+def auto_select_ep() -> str:
+    """
+    현재 플랫폼/하드웨어에 맞는 최적 EP를 자동 선택.
+    설치된 venv 중 우선순위가 가장 높은 것을 반환.
+    아무것도 없으면 'auto' (메인 프로세스의 onnxruntime 사용).
+    """
+    plat = sys.platform
+    priority = _AUTO_PRIORITY.get(plat, ["cpu"])
+
+    # CUDA 선택 시 NVIDIA GPU 존재 여부 확인
+    for ep_key in priority:
+        if not is_ep_available(ep_key):
+            continue
+        if ep_key == "cuda" and not _has_nvidia_gpu():
+            continue
+        return ep_key
+
+    return "auto"
+
+
+def _has_nvidia_gpu() -> bool:
+    """nvidia-smi 실행 가능 여부로 NVIDIA GPU 존재 판단."""
+    try:
+        subprocess.run(
+            ["nvidia-smi"], capture_output=True, timeout=5,
+            creationflags=_CREATE_NO_WINDOW,
+        )
+        return True
+    except Exception:
+        return False
+
+
+def get_platform_variants() -> "dict[str, dict]":
+    """현재 플랫폼에서 설치 가능한 EP 변종 목록."""
+    plat = sys.platform
+    return {k: v for k, v in EP_VARIANTS.items() if plat in v["platforms"]}
 
 
 def launch_worker(task: dict) -> subprocess.Popen:
     """
     ep_worker.py를 서브프로세스로 실행.
-    stdin: task JSON (단일 블록)
-    stdout: 줄 단위 JSON 이벤트 스트림
+    ep_key에 해당하는 venv의 Python을 사용.
     """
-    env = os.environ.copy()
+    ep_key = task.get("ep_key", "")
+    python_exe = str(_get_venv_python(ep_key)) if ep_key and is_ep_available(ep_key) else sys.executable
+
+    task["proj_root"] = str(_PROJECT_ROOT)
+
     proc = subprocess.Popen(
-        [sys.executable, str(WORKER_SCRIPT)],
+        [python_exe, str(WORKER_SCRIPT)],
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         stderr=subprocess.DEVNULL,
-        env=env,
         text=True,
         bufsize=1,
         creationflags=_CREATE_NO_WINDOW,

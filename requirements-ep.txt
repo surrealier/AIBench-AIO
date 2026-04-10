@@ -1,0 +1,5 @@
+# EP venv 공통 의존성 (inference 서브프로세스에 필요한 최소 패키지)
+numpy>=1.26.0
+opencv-python>=4.10.0
+psutil>=5.9.0
+PyYAML>=6.0.0

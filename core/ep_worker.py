@@ -18,13 +18,10 @@ def _emit(obj: dict) -> None:
     print(json.dumps(obj, ensure_ascii=False), flush=True)
 
 
-def _setup_paths(ep_dir: str, proj_root: str) -> None:
-    if ep_dir and os.path.isdir(ep_dir):
-        sys.path.insert(0, ep_dir)
-    if proj_root:
-        # 이미 경로에 없으면 추가
-        if proj_root not in sys.path:
-            sys.path.insert(1 if ep_dir else 0, proj_root)
+def _setup_paths(proj_root: str) -> None:
+    """프로젝트 루트를 sys.path에 추가 (venv에서는 onnxruntime 경로 조작 불필요)."""
+    if proj_root and proj_root not in sys.path:
+        sys.path.insert(0, proj_root)
 
 
 def _run_benchmark(task: dict) -> None:
@@ -33,7 +30,6 @@ def _run_benchmark(task: dict) -> None:
 
     configs = []
     for c in task.get("configs", []):
-        # tuple 필드 복원
         c["src_hw"] = tuple(c["src_hw"])
         configs.append(BenchmarkConfig(**c))
 
@@ -71,7 +67,7 @@ def main() -> None:
         _emit({"type": "error", "msg": f"태스크 파싱 실패: {exc}"})
         return
 
-    _setup_paths(task.get("ep_dir", ""), task.get("proj_root", ""))
+    _setup_paths(task.get("proj_root", ""))
 
     task_type = task.get("task")
     try:
